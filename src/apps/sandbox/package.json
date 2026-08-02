@@ -1,0 +1,17 @@
+{
+  "name": "@mini/sandbox",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mini/lib": "workspace:*",
+    "ol": "^10.10.0"
+  },
+  "devDependencies": {
+    "vite": "^8.2.0"
+  }
+}

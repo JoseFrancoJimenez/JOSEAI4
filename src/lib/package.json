@@ -1,0 +1,10 @@
+{
+  "name": "@mini/lib",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./core": "./core/index.ts",
+    "./elements": "./elements/index.ts",
+    "./widgets": "./widgets/index.ts"
+  }
+}
