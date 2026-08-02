@@ -1,5 +1,5 @@
 import Evented from '../../core/evented.ts';
-import type { ITocNodeDef, ITocNode, ITocModelEvents } from './toc.types.ts';
+import type { ITocNodeDef, ITocNode, ITocModelEvents, ITocModelWritable } from './toc.types.ts';
 
 class TocNode implements ITocNode {
   readonly id: string;
@@ -31,7 +31,7 @@ class TocNode implements ITocNode {
  * model.remove('CIMD');
  * ```
  */
-class TocModel extends Evented<ITocModelEvents> {
+class TocModel extends Evented<ITocModelEvents> implements ITocModelWritable {
   readonly #nodes: Map<string, TocNode> = new Map();
   readonly #roots: TocNode[] = [];
 

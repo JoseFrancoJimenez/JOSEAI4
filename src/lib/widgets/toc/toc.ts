@@ -1,6 +1,8 @@
 import './toc.css';
-import type { TocModel } from './toc-model.ts';
-import type { ITocNode } from './toc.types.ts';
+import { tocCss } from './toc-dom.ts';
+import { TocNodeElement, createTocNode } from './toc-node.ts';
+import type { ITocNodeToggleDetail } from './toc-node.ts';
+import type { ITocNode, ITocModelReadable } from './toc.types.ts';
 import type { Subscription } from '../../core/evented.ts';
 
 /**
@@ -21,21 +23,26 @@ interface ITocChangeDetail {
 }
 
 /**
- * Renders a {@link TocModel} as an interactive, expandable tree panel.
+ * Renders a {@link TocModel} (injected as its read-only {@link ITocModelReadable} view) as an
+ * interactive, expandable tree panel.
  *
- * Pass a `renderNode` function to {@link setup} to control what each node displays.
- * The component handles the tree structure — indentation, expand/collapse toggles, and nesting.
+ * Pass a `renderNode` function to {@link setup} to control what each node displays. The
+ * component handles the tree structure — indentation, expand/collapse toggles, and nesting.
  * When `renderNode` is omitted, {@link defaultRenderer} is used as the fallback.
  *
- * Child nodes are built lazily: they are added to the DOM on expand and removed on collapse.
- * The component re-renders the visible tree whenever the model fires `add`, `remove`, `move`, or `clear`.
+ * **All DOM updates are surgical.** `render()` runs only once, on initial build (from
+ * `connectedCallback` / `setup`); every later change — a user toggle, `expand`/`collapse`,
+ * or a model event — edits only the affected `<toc-node>`s via the `#index`. This is what
+ * preserves focus, caret position, and scroll: unrelated DOM is never touched, let alone
+ * destroyed and rebuilt.
+ *
+ * Child nodes are built lazily: added to the DOM on expand, removed on collapse. `#expanded`
+ * is the sole source of truth for what's expanded — it outlives the `<toc-node>` elements
+ * themselves, which are destroyed and recreated as ancestors collapse and re-expand.
  */
 class TocComponent extends HTMLElement {
   /** Custom element tag name. Use with `document.createElement` or as an HTML tag. */
   static readonly tagName = 'toc-component';
-
-  /** Selector matching elements that should not trigger an expand/collapse when clicked. */
-  static readonly interactiveSelector = 'input, button, select, textarea, a[href], label';
 
   /**
    * Names of the DOM events this component dispatches.
@@ -50,25 +57,11 @@ class TocComponent extends HTMLElement {
     change: 'toc:change',
   } as const;
 
-  /** CSS class names used by this component. Override in a subclass to restyle without touching logic. */
-  static readonly css = {
-    root:              TocComponent.tagName,
-    list:              'toc-list',
-    listNested:        'toc-list--nested',
-    treeNode:          'toc-node',
-    nodeLabel:         'toc-node-label',
-    row:               'toc-row',
-    toggle:            'toc-toggle',
-    arrow:             'toc-arrow',
-    indent:            'toc-indent',
-    content:           'toc-content',
-    contentExpandable: 'toc-content--expandable',
-    expanded:          'is-expanded',
-  } as const;
-
-  #model: TocModel | null = null;
+  #model: ITocModelReadable | null = null;
   #renderNode: ((node: ITocNode) => HTMLElement) | null = null;
   #expanded: Set<string> = new Set();
+  #index: Record<string, TocNodeElement> = {};
+  #rootList: HTMLUListElement | null = null;
   #subscriptions: Subscription[] = [];
 
   /**
@@ -77,12 +70,12 @@ class TocComponent extends HTMLElement {
    * @returns The SVG markup string for the arrow icon.
    */
   protected get expandIconHtml(): string {
-    return `<svg class="${TocComponent.css.arrow}" viewBox="0 0 6 10" aria-hidden="true"><path d="M1 1l4 4-4 4"/></svg>`;
+    return `<svg class="${tocCss.arrow}" viewBox="0 0 6 10" aria-hidden="true"><path d="M1 1l4 4-4 4"/></svg>`;
   }
 
   /** Called by the browser when the element is inserted into the DOM. Renders and binds events. */
   connectedCallback(): void {
-    this.classList.add(TocComponent.css.root);
+    this.classList.add(tocCss.root);
     this.render();
     this.bindEvents();
   }
@@ -93,7 +86,7 @@ class TocComponent extends HTMLElement {
   }
 
   /**
-   * Renders `node.id` in a `<span>` styled by `TocComponent.css.nodeLabel`.
+   * Renders `node.id` in a `<span>` styled by {@link tocCss.nodeLabel}.
    * Override in a subclass to change the fallback used when no `renderNode`
    * function is passed to {@link setup}.
    * @param node - The tree node to render.
@@ -101,7 +94,7 @@ class TocComponent extends HTMLElement {
    */
   protected defaultRenderer(node: ITocNode): HTMLElement {
     const span = document.createElement('span');
-    span.className = TocComponent.css.nodeLabel;
+    span.className = tocCss.nodeLabel;
     span.textContent = node.id;
     return span;
   }
@@ -109,38 +102,37 @@ class TocComponent extends HTMLElement {
   /**
    * Binds the component to a model and an optional node renderer.
    * May be called before or after the element is connected to the DOM.
-   * All nodes start collapsed.
-   * @param model - The {@link TocModel} to render.
-   * @param renderNode - function called once per node per render cycle. When omitted, {@link defaultRenderer} is used.
+   * All nodes start collapsed. `model` is the model's **read-only** view — this component
+   * never mutates it; that guarantee is enforced by the compiler, not convention.
+   * @param model - The read-only view of the {@link TocModel} to render.
+   * @param renderNode - function called once per node, when it is (re)built. When omitted, {@link defaultRenderer} is used.
    */
-  setup(model: TocModel, renderNode?: (node: ITocNode) => HTMLElement): void {
+  setup(model: ITocModelReadable, renderNode?: (node: ITocNode) => HTMLElement): void {
+    this.cleanup();
     this.#model = model;
     this.#renderNode = renderNode ?? null;
     this.#expanded.clear();
+    this.#index = {};
     if (this.isConnected) {
-      this.cleanup();
       this.render();
       this.bindEvents();
     }
   }
 
   /**
-   * Expands the node `id` — and only that node. Its expanded flag is set and the
-   * DOM updated surgically; when an ancestor is collapsed the node's row isn't in
-   * the DOM yet, so the flag is simply remembered and applied by {@link render}
-   * when that ancestor next expands.
+   * Expands the node `id` — and only that node. Deliberately does NOT expand ancestors:
+   * opening a node must not force its parents open, or restoring saved state (or driving a
+   * store) would re-reveal a subtree the user had collapsed. Callers that want a deep node
+   * *revealed* expand its ancestor chain themselves.
    *
-   * Deliberately does NOT expand ancestors. Expansion is declarative state: opening
-   * a node must not force its parents open, or restoring a saved state (or driving
-   * the store) would re-reveal a subtree the user had collapsed. Callers that want a
-   * deep node *revealed* expand its ancestor chain themselves.
+   * If an ancestor is currently collapsed, `id`'s row isn't in the DOM yet — the flag is
+   * still recorded and applied the moment that ancestor is next expanded (the lazy build).
    *
    * Emits a single {@link TocComponent.events.change} if the state changed. No-op for
    * an unknown or childless id.
    */
   expand(id: string): void {
-    if (!this.#model) return;
-    const node = this.#model.get(id);
+    const node = this.#model?.get(id);
     if (!node || !node.children.length) return;
     if (this.#setExpanded(id, true)) this.#emitChange();
   }
@@ -158,206 +150,203 @@ class TocComponent extends HTMLElement {
     if (!this.#model) return;
     let changed = false;
     for (const node of this.#model) {
-      if (node.children.length && !this.#expanded.has(node.id)) {
-        this.#expanded.add(node.id);
-        changed = true;
-      }
+      if (node.children.length && this.#setExpanded(node.id, true)) changed = true;
     }
-    if (!changed) return;
-    this.render();
-    this.#emitChange();
+    if (changed) this.#emitChange();
   }
 
   /** Collapses every node, emitting a single {@link TocComponent.events.change}. */
   collapseAll(): void {
-    if (this.#expanded.size === 0) return;
-    this.#expanded.clear();
-    this.render();
-    this.#emitChange();
-  }
-
-  /** Renders the component based on the current model state. */
-  protected render(): void {
-    if (!this.#model) { this.replaceChildren(); return; }
-    const ul = document.createElement('ul');
-    ul.className = TocComponent.css.list;
-    for (const root of this.#model.roots) ul.appendChild(this.#buildNode(root));
-    this.replaceChildren(ul);
+    let changed = false;
+    for (const id of [...this.#expanded]) {
+      if (this.#setExpanded(id, false)) changed = true;
+    }
+    if (changed) this.#emitChange();
   }
 
   /**
-   * Subscribes to model events and attaches the root click handler.
-   * No-ops if already bound or if no model is set.
+   * Builds the tree from scratch. This is the ONLY place the full tree is built from the
+   * model — every later change is a surgical edit via {@link #index}. Called once, from
+   * `connectedCallback` and `setup`.
    */
+  protected render(): void {
+    this.#index = {};
+    const list = document.createElement('ul');
+    list.className = tocCss.list;
+    if (this.#model) {
+      for (const root of this.#model.roots) list.appendChild(this.#buildNode(root));
+    }
+    this.#rootList = list;
+    this.replaceChildren(list);
+  }
+
+  /** Subscribes to model events and the node-toggle event. No-ops if already bound or no model set. */
   protected bindEvents(): void {
     if (!this.#model || this.#subscriptions.length) return;
     this.#subscriptions = [
-      this.#model.on('add',    () => this.render()),
-      this.#model.on('remove', ({ node }) => { this.#pruneExpanded(node); this.render(); }),
-      this.#model.on('move',   () => this.render()),
-      this.#model.on('clear',  () => { this.#expanded.clear(); this.render(); }),
+      this.#model.on('add', this.#onModelAdd),
+      this.#model.on('remove', this.#onModelRemove),
+      this.#model.on('move', this.#onModelMove),
+      this.#model.on('clear', this.#onModelClear),
     ];
-    this.addEventListener('click', this.#handleClick);
+    this.addEventListener(TocNodeElement.events.toggle, this.#onNodeToggle);
   }
 
-  /** Removes all model subscriptions and the root click handler. */
+  /** Removes all model subscriptions and the node-toggle listener. */
   protected cleanup(): void {
     for (const sub of this.#subscriptions) sub.remove();
     this.#subscriptions = [];
-    this.removeEventListener('click', this.#handleClick);
+    this.removeEventListener(TocNodeElement.events.toggle, this.#onNodeToggle);
   }
 
   /**
-   * Builds the `<li>` for a single node, including its toggle button (or indent spacer),
-   * content wrapper, and — when already expanded — its nested child list.
-   * @param node - The tree node to build.
-   * @returns The `<li>` element representing the node.
+   * Builds a `<toc-node>` for `node`, registers it in {@link #index}, and — if it's already
+   * marked expanded in {@link #expanded} — recursively builds its (also lazily-built) children.
+   * The single entry point for turning a model node into DOM, used by the initial render, the
+   * lazy expand build, and reconstructing a node that reappears after a `move`.
    */
-  #buildNode(node: ITocNode): HTMLElement {
-    const { treeNode, expanded, row, toggle, indent, content, contentExpandable } = TocComponent.css;
+  #buildNode(node: ITocNode): TocNodeElement {
     const hasChildren = node.children.length > 0;
-    const isExpanded = this.#expanded.has(node.id);
-
-    // Root <li>, carries the node id as a data attribute for event delegation
-    const li = document.createElement('li');
-    li.className = treeNode;
-    if (isExpanded) li.classList.add(expanded);
-    li.dataset.nodeId = node.id;
-
-    // Row flex, container holding the toggle/indent and the content area
-    const rowEl = document.createElement('div');
-    rowEl.className = row;
-
-    // Toggle button (parent nodes) or indent spacer (leaf nodes)
-    if (hasChildren) {
-      // Create expand element
-      const btn = document.createElement('button');
-      btn.className = toggle;
-      if (isExpanded) btn.classList.add(expanded); // mirrors initial state
-      btn.dataset.nodeId = node.id;                // used by #handleClick for delegation
-      btn.setAttribute('aria-label', `Toggle ${node.id}`);
-      btn.setAttribute('aria-expanded', String(isExpanded));
-      btn.innerHTML = this.expandIconHtml;         // icon — override expandIconHtml to customise
-      rowEl.appendChild(btn);
-    } else {
-      // Leaf node, spacer keeps content aligned with parent rows
-      const indentEl = document.createElement('span');
-      indentEl.className = indent;
-      rowEl.appendChild(indentEl);
+    const content = this.#renderNode ? this.#renderNode(node) : this.defaultRenderer(node);
+    const el = createTocNode({
+      id: node.id,
+      hasChildren,
+      content,
+      toggleIconHtml: this.expandIconHtml,
+    });
+    this.#index[node.id] = el;
+    if (hasChildren && this.#expanded.has(node.id)) {
+      el.setExpanded(true);
+      for (const child of node.children) el.appendChildNode(this.#buildNode(child));
     }
-
-    // Content area, consumer-supplied element or defaultRenderer fallback
-    const contentWrapper = document.createElement('div');
-    contentWrapper.className = hasChildren ? `${content} ${contentExpandable}` : content;
-    if (hasChildren) contentWrapper.dataset.toggleId = node.id;
-    contentWrapper.appendChild(this.#renderNode ? this.#renderNode(node) : this.defaultRenderer(node));
-    rowEl.appendChild(contentWrapper);
-    li.appendChild(rowEl);
-
-    // Child list, only appended when already expanded (lazy otherwise)
-    if (hasChildren && isExpanded) {
-      li.appendChild(this.#buildChildList(node));
-    }
-
-    return li;
+    return el;
   }
 
   /**
-   * Wraps all children of `node` in a nested `<ul>`.
-   * @param node - The parent node whose children to render.
-   * @returns A `<ul>` element containing one `<li>` per child.
-   */
-  #buildChildList(node: ITocNode): HTMLElement {
-    const { list, listNested } = TocComponent.css;
-    const ul = document.createElement('ul');
-    ul.className = `${list} ${listNested}`;
-    for (const child of node.children) ul.appendChild(this.#buildNode(child));
-    return ul;
-  }
-
-  /**
-   * Delegated click handler for the entire component.
-   * Intercepts clicks on `.toc-toggle` buttons and on expandable content areas,
-   * stopping propagation in both cases. All other clicks bubble normally.
-   * @param ev - The mouse event from the delegated listener.
-   */
-  #handleClick = (ev: MouseEvent): void => {
-    const { toggle, contentExpandable } = TocComponent.css;
-    const target = ev.target as Element;
-
-    // Click on the toggle button (highest priority, always fires)
-    const toggleEl = target.closest<HTMLElement>(`.${toggle}`);
-    if (toggleEl?.dataset.nodeId) {
-      ev.stopPropagation();
-      this.#toggle(toggleEl.dataset.nodeId);
-      return;
-    }
-
-    // Click on expandable content area (skipped if the click landed on an interactive element)
-    const expandableContent = target.closest<HTMLElement>(`.${contentExpandable}`);
-    if (expandableContent?.dataset.toggleId && !target.closest(TocComponent.interactiveSelector)) {
-      ev.stopPropagation();
-      this.#toggle(expandableContent.dataset.toggleId);
-    }
-  };
-
-  /**
-   * Toggles the expand/collapse state of the node identified by `id`. The click entry
-   * point: when the state changes it emits {@link TocComponent.events.clickToggle} (the
-   * clicked node) followed by {@link TocComponent.events.change} (the full snapshot).
-   * @param id - The id of the node to toggle.
-   */
-  #toggle(id: string): void {
-    const shouldExpand = !this.#expanded.has(id);
-    if (!this.#setExpanded(id, shouldExpand)) return;
-    this.#emitClickToggle(id, shouldExpand);
-    this.#emitChange();
-  }
-
-  /**
-   * Sets the expanded state of `id` via a surgical DOM update. The single chokepoint for
-   * one-node changes; it does not emit — the caller decides which event fits (`toggle`
-   * for a click, `autoToggle` for a programmatic change).
-   * @param id - The id of the node to expand or collapse.
-   * @param shouldExpand - `true` to expand, `false` to collapse.
+   * The single chokepoint for one-node expand/collapse state. Updates {@link #expanded}
+   * (the truth, which survives a node's destruction) and, only if the node currently has a
+   * DOM row, syncs it: reflects the new state and lazily builds/prunes its children. If the
+   * row isn't rendered (an ancestor is collapsed), the DOM sync is skipped — it happens
+   * later, when that ancestor's lazy build reads the now-updated `#expanded`.
    * @returns `true` if the state changed, `false` if it was already in that state.
    */
   #setExpanded(id: string, shouldExpand: boolean): boolean {
     if (this.#expanded.has(id) === shouldExpand) return false;
     if (shouldExpand) this.#expanded.add(id);
     else this.#expanded.delete(id);
-    this.#applyExpanded(id, shouldExpand);
+
+    const el = this.#index[id];
+    if (!el) return true;
+    el.setExpanded(shouldExpand);
+    if (shouldExpand) this.#buildChildrenInto(id, el);
+    else this.#pruneChildrenOf(id, el);
     return true;
   }
 
-  /**
-   * Surgically syncs the DOM of node `id` to `shouldExpand` — toggling classes/aria and
-   * appending or removing its nested child list, without re-rendering siblings. Callers
-   * update {@link #expanded} first; this only touches the DOM and no-ops if the node
-   * isn't currently rendered (e.g. an ancestor is collapsed), in which case its child
-   * list is built lazily when that ancestor next expands.
-   * @param id - The id of the node to sync.
-   * @param shouldExpand - The target expanded state to reflect in the DOM.
-   */
-  #applyExpanded(id: string, shouldExpand: boolean): void {
-    const { treeNode, expanded, toggle, listNested } = TocComponent.css;
-
-    const nodeEl = [...this.querySelectorAll<HTMLElement>(`.${treeNode}`)]
-      .find(el => el.dataset.nodeId === id) ?? null;
-    if (!nodeEl) return;
-
-    nodeEl.classList.toggle(expanded, shouldExpand);
-    const toggleBtn = nodeEl.querySelector<HTMLElement>(`.${toggle}`);
-    toggleBtn?.classList.toggle(expanded, shouldExpand);
-    toggleBtn?.setAttribute('aria-expanded', String(shouldExpand));
-
-    if (shouldExpand) {
-      const tocNode = this.#model?.get(id);
-      if (tocNode) nodeEl.appendChild(this.#buildChildList(tocNode));
-    } else {
-      nodeEl.querySelector(`.${listNested}`)?.remove();
-    }
+  /** Lazily builds `id`'s children into its already-rendered row. */
+  #buildChildrenInto(id: string, el: TocNodeElement): void {
+    const node = this.#model?.get(id);
+    if (!node) return;
+    for (const child of node.children) el.appendChildNode(this.#buildNode(child));
   }
+
+  /** Unregisters `id`'s children from {@link #index} and removes them from its row. */
+  #pruneChildrenOf(id: string, el: TocNodeElement): void {
+    const node = this.#model?.get(id);
+    if (node) for (const child of node.children) this.#pruneIndexSubtree(child);
+    el.clearChildren();
+  }
+
+  /**
+   * Unregisters `node` and its whole subtree from {@link #index} only. Deliberately leaves
+   * {@link #expanded} untouched: the node still exists in the model, just its `<toc-node>`
+   * is (about to be) destroyed — collapsing an ancestor, or dropping a `move` target into a
+   * collapsed parent. Expansion state must survive so it reappears exactly as the user left
+   * it the next time this subtree is (lazily) rebuilt.
+   */
+  #pruneIndexSubtree(node: ITocNode): void {
+    delete this.#index[node.id];
+    for (const child of node.children) this.#pruneIndexSubtree(child);
+  }
+
+  /**
+   * Unregisters `node` and its whole subtree from both {@link #index} and {@link #expanded}.
+   * Only for nodes that no longer exist in the model at all (a `remove`) — there is nothing
+   * left to "remember" expansion state for.
+   */
+  #pruneAll(node: ITocNode): void {
+    delete this.#index[node.id];
+    this.#expanded.delete(node.id);
+    for (const child of node.children) this.#pruneAll(child);
+  }
+
+  /** Reflects `parent`'s current leaf/branch status on its row, if rendered. No-op for a root's null parent. */
+  #syncLeaf(parent: ITocNode | null): void {
+    if (!parent) return;
+    this.#index[parent.id]?.setLeaf(parent.children.length === 0);
+  }
+
+  #onModelAdd = ({ node }: { node: ITocNode }): void => {
+    const parent = node.parent;
+    if (!parent) {
+      this.#rootList?.appendChild(this.#buildNode(node));
+      return;
+    }
+    const parentEl = this.#index[parent.id];
+    if (!parentEl) return; // an ancestor is collapsed; picked up by the lazy build later
+    parentEl.setLeaf(false); // may have just gained its first child
+    if (this.#expanded.has(parent.id)) parentEl.appendChildNode(this.#buildNode(node));
+  };
+
+  #onModelRemove = ({ node }: { node: ITocNode }): void => {
+    this.#index[node.id]?.detach();
+    this.#pruneAll(node);
+    this.#syncLeaf(node.parent);
+  };
+
+  /**
+   * `move` is the complex reaction: the model already decided and validated (cycle
+   * detection) and mutated the tree — this only syncs the DOM. Re-parenting the actual
+   * element (rather than rebuilding) is what makes indentation "just work": it's structural
+   * (nested `<ul>`s), so moving the element into new nesting fixes it automatically.
+   */
+  #onModelMove = ({ node, previousParent }: { node: ITocNode; previousParent: ITocNode | null }): void => {
+    this.#syncLeaf(previousParent);
+    this.#syncLeaf(node.parent);
+
+    const existing = this.#index[node.id];
+    existing?.detach();
+
+    const newParent = node.parent;
+    const parentEl = newParent ? this.#index[newParent.id] : null;
+    const targetOpen = newParent === null || (parentEl !== undefined && this.#expanded.has(newParent.id));
+
+    if (!targetOpen) {
+      if (existing) this.#pruneIndexSubtree(node); // keep #expanded — it may reappear on a later expand
+      return;
+    }
+    const el = existing ?? this.#buildNode(node);
+    if (parentEl) parentEl.appendChildNode(el);
+    else this.#rootList?.appendChild(el);
+  };
+
+  #onModelClear = (): void => {
+    this.#expanded.clear();
+    this.#index = {};
+    const list = document.createElement('ul');
+    list.className = tocCss.list;
+    this.#rootList = list;
+    this.replaceChildren(list);
+  };
+
+  /** A `<toc-node>` announced a click on its toggle (or expandable content). The widget owns the resulting state. */
+  #onNodeToggle = (ev: Event): void => {
+    const { id } = (ev as CustomEvent<ITocNodeToggleDetail>).detail;
+    const shouldExpand = !this.#expanded.has(id);
+    if (!this.#setExpanded(id, shouldExpand)) return;
+    this.#emitClickToggle(id, shouldExpand);
+    this.#emitChange();
+  };
 
   /** Dispatches {@link TocComponent.events.clickToggle} naming the node a user just toggled. */
   #emitClickToggle(id: string, expanded: boolean): void {
@@ -373,15 +362,6 @@ class TocComponent extends HTMLElement {
       detail: { expanded: [...this.#expanded] },
       bubbles: true,
     }));
-  }
-
-  /**
-   * Recursively removes `node` and its entire subtree from the expanded set.
-   * @param node - The root of the subtree to prune.
-   */
-  #pruneExpanded(node: ITocNode): void {
-    this.#expanded.delete(node.id);
-    for (const child of node.children) this.#pruneExpanded(child);
   }
 }
 

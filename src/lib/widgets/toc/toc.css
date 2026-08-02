@@ -17,18 +17,23 @@
   overflow-y: auto;
   user-select: none;
 
+  /* Each row is a <toc-node> custom element (not a real <li>), placed directly inside a <ul>. */
+  toc-node {
+    display: block;
+  }
+
   /* ── List structure ──────────────────────────────────────────── */
 
   .toc-list {
     list-style: none;
     margin: 0;
     padding: 0;
-  }
 
-  .toc-list--nested {
-    padding-left: 16px;
-    border-left: 1px solid var(--toc-indent-line);
-    margin-left: 7px;
+    &.toc-list--nested {
+      padding-left: 16px;
+      border-left: 1px solid var(--toc-indent-line);
+      margin-left: 7px;
+    }
   }
 
   /* ── Row ─────────────────────────────────────────────────────── */
@@ -44,70 +49,67 @@
     &:hover {
       background: var(--toc-row-hover);
     }
-  }
 
-  /* ── Toggle button ───────────────────────────────────────────── */
+    /* ── Toggle button ─────────────────────────────────────────── */
 
-  .toc-toggle {
-    flex-shrink: 0;
-    width: 16px;
-    height: 16px;
-    margin-top: 1px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--toc-toggle-color);
-    border-radius: 2px;
-    transition: color 0.1s, background 0.1s;
+    .toc-toggle {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      margin-top: 1px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--toc-toggle-color);
+      border-radius: 2px;
+      transition: color 0.1s, background 0.1s;
 
-    &:hover {
-      color: var(--toc-toggle-hover);
-      background: var(--toc-toggle-hover-bg);
+      &:hover {
+        color: var(--toc-toggle-hover);
+        background: var(--toc-toggle-hover-bg);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--toc-focus-ring);
+        outline-offset: 1px;
+      }
+
+      &.is-expanded .toc-arrow {
+        transform: rotate(90deg);
+      }
+
+      /* Leaf nodes: keep the toggle's layout space (rows stay aligned) but hide it from view and a11y tree. */
+      &.toc-toggle--leaf {
+        visibility: hidden;
+      }
+
+      /* ── Arrow icon ──────────────────────────────────────────── */
+
+      .toc-arrow {
+        width: 6px;
+        height: 10px;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+        transition: transform 0.15s ease;
+      }
     }
 
-    &:focus-visible {
-      outline: 2px solid var(--toc-focus-ring);
-      outline-offset: 1px;
+    /* ── Node content area ────────────────────────────────────── */
+
+    .toc-content {
+      flex: 1;
+      min-width: 0;
+
+      &.toc-content--expandable {
+        cursor: pointer;
+      }
     }
-
-    &.is-expanded .toc-arrow {
-      transform: rotate(90deg);
-    }
-  }
-
-  /* ── Arrow icon ──────────────────────────────────────────────── */
-
-  .toc-arrow {
-    width: 6px;
-    height: 10px;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    fill: none;
-    transition: transform 0.15s ease;
-  }
-
-  /* ── Indent spacer (leaf nodes) ──────────────────────────────── */
-
-  .toc-indent {
-    flex-shrink: 0;
-    width: 16px;
-    display: inline-block;
-  }
-
-  /* ── Node content area ───────────────────────────────────────── */
-
-  .toc-content {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .toc-content--expandable {
-    cursor: pointer;
   }
 }

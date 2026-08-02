@@ -24,7 +24,7 @@ This file is **guidance, not enforcement**. The hard invariants below are also e
 - Dependencies point **app → library**, never the reverse.
 - **No Shadow DOM.** All custom elements render into **light DOM**.
 - Contract for every element/widget: **props-down / events-up**. Input by property/attribute; output by `CustomEvent`.
-- UI Elements and Widgets must have their own CSS files (if the have CSS)
+- UI Elements and Widgets must have their own CSS files (if the have CSS). We must use nested css whenever possible.
 
 **State (the store tool)**
 
