@@ -13,7 +13,18 @@ const tocCss = {
   expanded:          'is-expanded',
 } as const;
 
+/** Form controls a <label> can legitimately be associated with. */
+const labelableSelector = 'input, select, textarea';
+
 /** Elements that should absorb a click without triggering expand/collapse (e.g. a control inside consumer content). */
-const interactiveSelector = 'input, button, select, textarea, a[href], label';
+const interactiveSelector = [
+  'input',
+  'button',
+  'select',
+  'textarea',
+  'a[href]',
+  'label[for]',                      // explicit association
+  `label:has(${labelableSelector})`, // wrapping association
+].join(', ');
 
 export { tocCss, interactiveSelector };
