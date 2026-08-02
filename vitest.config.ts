@@ -17,6 +17,13 @@ export default defineConfig({
           environment: "jsdom",
         },
       },
+      {
+        test: {
+          name: "toc-demo",
+          root: "./src/apps/toc-demo",
+          environment: "jsdom",
+        },
+      },
     ],
   },
 });

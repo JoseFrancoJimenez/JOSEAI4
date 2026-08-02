@@ -43,6 +43,16 @@ importers:
         specifier: ^8.2.0
         version: 8.2.0
 
+  src/apps/toc-demo:
+    dependencies:
+      '@mini/lib':
+        specifier: workspace:*
+        version: link:../../lib
+    devDependencies:
+      vite:
+        specifier: ^8.2.0
+        version: 8.2.0
+
   src/lib: {}
 
 packages:

@@ -57,4 +57,4 @@ Code must always be written in English.
 
 ## First words.
 
-Your first words, per session, must always be "I've read the docs, I am ready".
+Your first words, per session, must always be "I've read the docs, I am ready". and specify what documents have you read (name and route).
