@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pnpm vitest run src/lib/widgets/toc 2>&1)",
+      "PowerShell(pnpm typecheck 2>&1)"
+    ]
+  }
+}

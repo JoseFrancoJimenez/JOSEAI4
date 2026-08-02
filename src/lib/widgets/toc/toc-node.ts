@@ -14,6 +14,9 @@ interface ITocNodeToggleDetail {
   id: string;
 }
 
+/** Source for unique `id`s given to each row's content wrapper, so the toggle button can name itself via `aria-labelledby`. */
+let nextContentId = 0;
+
 /**
  * Presentation of a single TOC row. Internal building block of the TOC widget — not a public API.
  *
@@ -76,6 +79,8 @@ class TocNodeElement extends HTMLElement {
     const config = this.#config;
     if (!config || this.#elements.row) return;
 
+    this.setAttribute('role', 'listitem');
+
     this.innerHTML = this.#html();
     this.#elements = collectElementsByName(this);
 
@@ -84,8 +89,10 @@ class TocNodeElement extends HTMLElement {
     toggle.addEventListener('click', this.#handleToggleClick);
 
     const contentWrapper = this.#contentWrapper!;
+    contentWrapper.id = `toc-node-content-${nextContentId++}`;
     contentWrapper.addEventListener('click', this.#handleContentClick);
     contentWrapper.appendChild(config.content);
+    toggle.setAttribute('aria-labelledby', contentWrapper.id);
 
     this.setLeaf(!config.hasChildren);
   }

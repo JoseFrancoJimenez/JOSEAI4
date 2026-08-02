@@ -50,6 +50,22 @@ describe('TocNodeElement.configure', () => {
     expect(el.nodeId).toBe('X1');
   });
 
+  it('is a listitem, and its toggle button is named via the content wrapper', () => {
+    const el = build();
+    expect(el.getAttribute('role')).toBe('listitem');
+
+    const content = contentEl(el);
+    const btn = toggleBtn(el);
+    expect(content.id).toBeTruthy();
+    expect(btn.getAttribute('aria-labelledby')).toBe(content.id);
+  });
+
+  it('gives each row a unique content id, so accessible names never collide', () => {
+    const a = build({ id: 'A' });
+    const b = build({ id: 'B' });
+    expect(contentEl(a).id).not.toBe(contentEl(b).id);
+  });
+
   it('leaf: hides the toggle via class, marks aria-hidden, and sets no aria-expanded', () => {
     const el = build({ hasChildren: false });
     const btn = toggleBtn(el);
