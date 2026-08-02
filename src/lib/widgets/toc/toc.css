@@ -1,0 +1,113 @@
+.toc-component {
+  --toc-bg:             #1a1d23;
+  --toc-text:           #c8cdd6;
+  --toc-row-hover:      #22262f;
+  --toc-indent-line:    #2a2f3a;
+  --toc-toggle-color:   #555e72;
+  --toc-toggle-hover:   #8b95a8;
+  --toc-toggle-hover-bg: #2e3340;
+  --toc-focus-ring:     #5b8af5;
+
+  display: block;
+  background: var(--toc-bg);
+  color: var(--toc-text);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11.5px;
+  line-height: 1.4;
+  overflow-y: auto;
+  user-select: none;
+
+  /* ── List structure ──────────────────────────────────────────── */
+
+  .toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .toc-list--nested {
+    padding-left: 16px;
+    border-left: 1px solid var(--toc-indent-line);
+    margin-left: 7px;
+  }
+
+  /* ── Row ─────────────────────────────────────────────────────── */
+
+  .toc-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 3px 8px 3px 4px;
+    border-radius: 3px;
+    transition: background 0.1s;
+
+    &:hover {
+      background: var(--toc-row-hover);
+    }
+  }
+
+  /* ── Toggle button ───────────────────────────────────────────── */
+
+  .toc-toggle {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--toc-toggle-color);
+    border-radius: 2px;
+    transition: color 0.1s, background 0.1s;
+
+    &:hover {
+      color: var(--toc-toggle-hover);
+      background: var(--toc-toggle-hover-bg);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--toc-focus-ring);
+      outline-offset: 1px;
+    }
+
+    &.is-expanded .toc-arrow {
+      transform: rotate(90deg);
+    }
+  }
+
+  /* ── Arrow icon ──────────────────────────────────────────────── */
+
+  .toc-arrow {
+    width: 6px;
+    height: 10px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    transition: transform 0.15s ease;
+  }
+
+  /* ── Indent spacer (leaf nodes) ──────────────────────────────── */
+
+  .toc-indent {
+    flex-shrink: 0;
+    width: 16px;
+    display: inline-block;
+  }
+
+  /* ── Node content area ───────────────────────────────────────── */
+
+  .toc-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .toc-content--expandable {
+    cursor: pointer;
+  }
+}
