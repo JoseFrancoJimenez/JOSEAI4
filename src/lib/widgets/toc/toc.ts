@@ -1,5 +1,5 @@
 import './toc.css';
-import { tocCss } from './toc-dom.ts';
+import { tocCss, collectElementsByName } from './toc-dom.ts';
 import { TocNodeElement, createTocNode } from './toc-node.ts';
 import type { ITocNodeToggleDetail } from './toc-node.ts';
 import type { ITocNode, ITocModelReadable } from './toc.types.ts';
@@ -61,6 +61,7 @@ class TocComponent extends HTMLElement {
   #renderNode: ((node: ITocNode) => HTMLElement) | null = null;
   #expanded: Set<string> = new Set();
   #index: Record<string, TocNodeElement> = {};
+  #elements: Record<string, HTMLElement> = {};
   #rootList: HTMLUListElement | null = null;
   #subscriptions: Subscription[] = [];
 
@@ -165,19 +166,33 @@ class TocComponent extends HTMLElement {
   }
 
   /**
+   * The component's static HTML skeleton — just the root list. Elements the component needs to
+   * reference after build carry `elementName`; {@link #buildSkeleton} collects them.
+   */
+  protected html(): string {
+    return `<ul class="${tocCss.list}" elementName="rootList"></ul>`;
+  }
+
+  /**
    * Builds the tree from scratch. This is the ONLY place the full tree is built from the
    * model — every later change is a surgical edit via {@link #index}. Called once, from
    * `connectedCallback` and `setup`.
    */
   protected render(): void {
     this.#index = {};
-    const list = document.createElement('ul');
-    list.className = tocCss.list;
+    const rootList = this.#buildSkeleton();
     if (this.#model) {
-      for (const root of this.#model.roots) list.appendChild(this.#buildNode(root));
+      for (const root of this.#model.roots) rootList.appendChild(this.#buildNode(root));
     }
-    this.#rootList = list;
-    this.replaceChildren(list);
+  }
+
+  /** (Re)builds {@link #html}'s skeleton and stores its `elementName`-tagged elements in {@link #elements}. */
+  #buildSkeleton(): HTMLUListElement {
+    this.innerHTML = this.html();
+    this.#elements = collectElementsByName(this);
+    const rootList = this.#elements.rootList as HTMLUListElement;
+    this.#rootList = rootList;
+    return rootList;
   }
 
   /** Subscribes to model events and the node-toggle event. No-ops if already bound or no model set. */
@@ -333,10 +348,7 @@ class TocComponent extends HTMLElement {
   #onModelClear = (): void => {
     this.#expanded.clear();
     this.#index = {};
-    const list = document.createElement('ul');
-    list.className = tocCss.list;
-    this.#rootList = list;
-    this.replaceChildren(list);
+    this.#buildSkeleton();
   };
 
   /** A `<toc-node>` announced a click on its toggle (or expandable content). The widget owns the resulting state. */

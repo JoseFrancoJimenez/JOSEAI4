@@ -1,5 +1,5 @@
 import './toc.css';
-import { tocCss, interactiveSelector } from './toc-dom.ts';
+import { tocCss, interactiveSelector, collectElementsByName } from './toc-dom.ts';
 
 /** Props-in config applied once via {@link TocNodeElement.configure}. */
 interface ITocNodeConfig {
@@ -31,8 +31,8 @@ class TocNodeElement extends HTMLElement {
 
   #id = '';
   #hasChildren = false;
-  #toggleBtn: HTMLButtonElement | null = null;
-  #contentWrapper: HTMLDivElement | null = null;
+  #config: ITocNodeConfig | null = null;
+  #elements: Record<string, HTMLElement> = {};
   #childList: HTMLUListElement | null = null;
 
   /** The tree node id this element represents. */
@@ -40,30 +40,54 @@ class TocNodeElement extends HTMLElement {
     return this.#id;
   }
 
-  /** Builds the row's DOM once. Must be called exactly once, before the element is used. */
-  configure({ id, hasChildren, content, toggleIconHtml }: ITocNodeConfig): void {
-    this.#id = id;
-    this.dataset.nodeId = id;
+  get #toggleBtn(): HTMLButtonElement | null {
+    return (this.#elements.toggle as HTMLButtonElement | undefined) ?? null;
+  }
 
-    const row = document.createElement('div');
-    row.className = tocCss.row;
+  get #contentWrapper(): HTMLDivElement | null {
+    return (this.#elements.content as HTMLDivElement | undefined) ?? null;
+  }
 
-    const toggle = document.createElement('button');
-    toggle.className = tocCss.toggle;
-    toggle.innerHTML = toggleIconHtml;
+  /** Configures the row's props. Must be called exactly once, before the element is used. Builds immediately (does not wait for connection), since the widget assembles subtrees before they're attached to the document. */
+  configure(config: ITocNodeConfig): void {
+    this.#id = config.id;
+    this.dataset.nodeId = config.id;
+    this.#config = config;
+    this.#build();
+  }
+
+  /** Builds the row on connection too, in case the element is inserted into the DOM before {@link configure} is called. */
+  connectedCallback(): void {
+    this.#build();
+  }
+
+  /** The row's static HTML skeleton. Elements the widget needs to reference after build carry `elementName`. */
+  #html(): string {
+    return `
+      <div class="${tocCss.row}" elementName="row">
+        <button class="${tocCss.toggle}" elementName="toggle"></button>
+        <div class="${tocCss.content}" elementName="content"></div>
+      </div>
+    `;
+  }
+
+  /** Builds the row from {@link #html} and collects its `elementName`-tagged elements. No-op if already built or not yet configured. */
+  #build(): void {
+    const config = this.#config;
+    if (!config || this.#elements.row) return;
+
+    this.innerHTML = this.#html();
+    this.#elements = collectElementsByName(this);
+
+    const toggle = this.#toggleBtn!;
+    toggle.innerHTML = config.toggleIconHtml;
     toggle.addEventListener('click', this.#handleToggleClick);
-    this.#toggleBtn = toggle;
-    row.appendChild(toggle);
 
-    const contentWrapper = document.createElement('div');
-    contentWrapper.className = tocCss.content;
+    const contentWrapper = this.#contentWrapper!;
     contentWrapper.addEventListener('click', this.#handleContentClick);
-    contentWrapper.appendChild(content);
-    this.#contentWrapper = contentWrapper;
-    row.appendChild(contentWrapper);
+    contentWrapper.appendChild(config.content);
 
-    this.replaceChildren(row);
-    this.setLeaf(!hasChildren);
+    this.setLeaf(!config.hasChildren);
   }
 
   /** Reflects the expanded/collapsed state (class + ARIA). Does not build or prune children — the caller does. */

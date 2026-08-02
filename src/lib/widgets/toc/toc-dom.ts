@@ -27,4 +27,17 @@ const interactiveSelector = [
   `label:has(${labelableSelector})`, // wrapping association
 ].join(', ');
 
-export { tocCss, interactiveSelector };
+/** Attribute an `html()` template puts on any element it needs to reference after build. */
+const ELEMENT_NAME_ATTR = 'elementName';
+
+/** Scans `root`'s descendants for `[elementName]` and returns a lookup keyed by that attribute's value. */
+function collectElementsByName(root: ParentNode): Record<string, HTMLElement> {
+  const elements: Record<string, HTMLElement> = {};
+  for (const el of root.querySelectorAll<HTMLElement>(`[${ELEMENT_NAME_ATTR}]`)) {
+    const name = el.getAttribute(ELEMENT_NAME_ATTR);
+    if (name) elements[name] = el;
+  }
+  return elements;
+}
+
+export { tocCss, interactiveSelector, ELEMENT_NAME_ATTR, collectElementsByName };
