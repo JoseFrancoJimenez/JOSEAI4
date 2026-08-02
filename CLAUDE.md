@@ -50,3 +50,11 @@ This file is **guidance, not enforcement**. The hard invariants below are also e
 ## Before finishing
 
 Run the closest test and typecheck before reporting a task complete.
+
+## Language
+
+Code must always be written in English. 
+
+## First words.
+
+Your first words, per session, must always be "I've read the docs, I am ready".
