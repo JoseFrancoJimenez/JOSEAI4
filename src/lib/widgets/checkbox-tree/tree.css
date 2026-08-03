@@ -1,3 +1,7 @@
+checkbox-tree {
+  display: block;
+}
+
 /* Rows are <tree-node> custom elements. Styles work standalone (bare node) and inside a <checkbox-tree>. */
 tree-node {
   display: block;
