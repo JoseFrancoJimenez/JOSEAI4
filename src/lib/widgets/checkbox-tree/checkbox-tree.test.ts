@@ -633,6 +633,34 @@ describe('CheckboxTreeElement — add, cascade aggregation', () => {
   });
 });
 
+describe('CheckboxTreeElement — leaf ↔ branch checkbox storage transition', () => {
+  it("cascade: a checked checkbox-leaf gaining a child forgets its stored state and begins deriving (empty group → unchecked)", () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel);
+    const images = byId(tree, 'images');
+    images.focus();
+    fireKey(images, ' '); // check the leaf directly
+    expect(images.getAttribute('aria-checked')).toBe('true');
+
+    tree.add({ id: 'photo1', parent_id: 'images' }, images); // becomes a branch; no longer stored
+    expect(tree.getChecked()).not.toContain('images');
+    expect(images.getAttribute('aria-checked')).toBe('false'); // derives — no checked descendants yet
+  });
+
+  it('self: a checked checkbox-leaf gaining a child keeps its stored box state', () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel, { checkable: 'self' });
+    const images = byId(tree, 'images');
+    images.focus();
+    fireKey(images, ' ');
+    expect(images.getAttribute('aria-checked')).toBe('true');
+
+    tree.add({ id: 'photo1', parent_id: 'images' }, images);
+    expect(tree.getChecked()).toContain('images');
+    expect(images.getAttribute('aria-checked')).toBe('true'); // kept, not forgotten
+  });
+});
+
 describe('CheckboxTreeElement — removeNode', () => {
   it('removing the last child flips a branch back to a leaf', () => {
     const tree = mount();
@@ -666,6 +694,23 @@ describe('CheckboxTreeElement — removeNode', () => {
 
     tree.removeNode('archive'); // removes a checked leaf directly
     expect(tree.getChecked()).toEqual([]);
+  });
+});
+
+describe('CheckboxTreeElement — removeNode, self mode', () => {
+  it("forgets a removed checkbox-group's own stored id (not just checkbox-leaves), and never reflects ancestors", () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel, { checkable: 'self' });
+    const reports = byId(tree, 'reports');
+    const docs = byId(tree, 'docs');
+    reports.focus();
+    fireKey(reports, ' '); // check the group's own box
+    tree.setChecked([...tree.getChecked(), 'q1']); // also check a descendant leaf, independently
+    expect(tree.getChecked().sort()).toEqual(['q1', 'reports']);
+
+    tree.removeNode('reports');
+    expect(tree.getChecked()).toEqual([]);
+    expect(docs.getAttribute('aria-checked')).toBe('false'); // untouched — never a self ancestor recompute
   });
 });
 
@@ -704,6 +749,21 @@ describe('CheckboxTreeElement — move', () => {
     tree.move('reports', null);
     expect(docs.getAttribute('aria-checked')).toBe('false'); // only images (unchecked) remains under docs
     expect(docs.isLeaf).toBe(false); // images still there
+  });
+});
+
+describe('CheckboxTreeElement — move, self mode', () => {
+  it("moving a checked checkbox-group keeps its own box; neither the old nor the new parent's ancestors are recomputed", () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel, { checkable: 'self' });
+    const reports = byId(tree, 'reports');
+    const docs = byId(tree, 'docs');
+    reports.focus();
+    fireKey(reports, ' ');
+
+    tree.move('reports', null);
+    expect(byId(tree, 'reports').getAttribute('aria-checked')).toBe('true'); // kept
+    expect(docs.getAttribute('aria-checked')).toBe('false'); // never recomputed either way
   });
 });
 

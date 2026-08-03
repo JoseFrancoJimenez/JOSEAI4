@@ -178,11 +178,10 @@ class CheckboxTreeElement extends HTMLElement {
   /**
    * Builds a node from `def` (always a leaf — it has no children yet) and inserts it under `parent`
    * at `index` (appended if omitted). `parent` omitted/null inserts a root. `def.type` (default
-   * `'label'`) decides checkbox placement, same as {@link build}. Surgical: only the affected
-   * sibling group and `parent`'s own ancestors are re-stamped/reflected.
-   *
-   * TODO(M3): a checkbox-leaf `parent` gaining this child becomes a checkbox-branch — in cascade
-   * mode its stored state should be forgotten (it now derives); self mode should keep it. Not yet done.
+   * `'label'`) decides checkbox placement, same as {@link build}. If `parent` was itself a
+   * checkbox-leaf, it flips to a checkbox-branch — see {@link #onParentGainedChild} for the
+   * cascade/self storage-transition rule. Surgical: only the affected sibling group and `parent`'s
+   * own ancestors are re-stamped/reflected.
    */
   add<T extends ITreeDef>(def: T, parent?: TreeNodeElement | string | null, index?: number): void {
     const parentNode = parent == null ? null : this.#resolve(parent);
@@ -203,21 +202,16 @@ class CheckboxTreeElement extends HTMLElement {
   }
 
   /**
-   * Detaches `node` and its subtree, forgetting any of its checked checkbox-leaves. If that empties
-   * its parent, the parent flips back to a leaf. Surgical: only the former parent's sibling group
-   * and ancestors are re-stamped/reflected (only in `'cascade'` mode — see {@link #reflectAncestors}).
-   *
-   * TODO(M3): in `'self'` mode, checkbox-**groups** inside the removed subtree also store their own
-   * boolean and should be forgotten too; today only checkbox-leaves are.
+   * Detaches `node` and its subtree, forgetting every id within it that could hold stored checked
+   * state under the current policy (see {@link #storedCheckboxIds}). If that empties its parent, the
+   * parent flips back to a leaf. Surgical: only the former parent's sibling group and ancestors are
+   * re-stamped/reflected (only in `'cascade'` mode — see {@link #reflectAncestors}).
    */
   removeNode(node: TreeNodeElement | string): void {
     const target = this.#resolve(node);
     if (!target) return;
 
-    const leafIds = target.isLeaf
-      ? (target.dataset.id !== undefined ? [target.dataset.id] : [])
-      : this.#descendantCheckboxLeafIds(target);
-    this.#model.forget(leafIds);
+    this.#model.forget(this.#storedCheckboxIds(target));
 
     const parent = this.#parentRow(target);
     target.remove();
@@ -423,6 +417,26 @@ class CheckboxTreeElement extends HTMLElement {
     return ids;
   }
 
+  /**
+   * Ids within `node`'s own subtree (`node` included) that could currently hold stored checked
+   * state, under the active policy — used to forget the right ids on removal. Checkbox-leaves
+   * always store; checkbox-**groups** store too, but only in `'self'` mode (in `'cascade'` mode a
+   * group derives, so it was never in the model to begin with).
+   */
+  #storedCheckboxIds(node: TreeNodeElement): string[] {
+    const ids: string[] = [];
+    const collect = (el: TreeNodeElement): void => {
+      if (!this.#isCheckbox(el) || el.dataset.id === undefined) return;
+      if (el.isLeaf || this.#checkable === 'self') ids.push(el.dataset.id);
+    };
+    collect(node);
+    const group = node.querySelector<HTMLElement>(`:scope > .${treeCss.group}`);
+    if (group) {
+      for (const el of group.querySelectorAll<TreeNodeElement>(TreeNodeElement.tagName)) collect(el);
+    }
+    return ids;
+  }
+
   /** `node`'s ancestor rows, immediate parent first, up to (not including) the container. */
   #enclosingNodes(node: TreeNodeElement): TreeNodeElement[] {
     const ancestors: TreeNodeElement[] = [];
@@ -580,18 +594,28 @@ class CheckboxTreeElement extends HTMLElement {
   }
 
   /**
-   * A parent that just lost its last child flips back to a leaf. Checkbox presence no longer
-   * depends on leaf/branch (it's driven by `type`, stamped once at creation) — see Task M3 for the
-   * cascade-mode storage transition this still owes (leaf ↔ branch stored/derived checked state).
+   * A parent that just lost its last child flips back to a leaf. Checkbox presence never changes
+   * (driven by `type`, fixed at creation). A checkbox-branch→leaf transition needs no explicit
+   * storage fix-up either way: in `'cascade'` mode it simply becomes an unchecked stored leaf (it
+   * was never stored as a group, so there's nothing to carry over); in `'self'` mode it already had
+   * its own stored boolean as a group and keeps it unchanged.
    */
   #onParentEmptied(parent: TreeNodeElement): void {
     parent.setLeaf(true);
   }
 
-  /** A leaf parent that just gained a child flips to a branch. See {@link #onParentEmptied}. */
+  /**
+   * A leaf parent that just gained a child flips to a branch. Checkbox presence is unaffected, but
+   * a checkbox-leaf→branch transition in `'cascade'` mode must forget its stored id — it now derives
+   * from descendants instead. `'self'` mode keeps the stored boolean unchanged (a group stores its
+   * own state too, so nothing to forget).
+   */
   #onParentGainedChild(parent: TreeNodeElement): void {
     if (!parent.isLeaf) return;
     parent.setLeaf(false);
+    if (this.#checkable === 'cascade' && this.#isCheckbox(parent) && parent.dataset.id !== undefined) {
+      this.#model.forget([parent.dataset.id]);
+    }
   }
 
   /** Reflects `node` itself and its ancestors — the surgical scope for a structural mutation's checkbox effects. No-op for `null`. */
