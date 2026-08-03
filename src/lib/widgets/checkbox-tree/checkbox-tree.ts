@@ -150,6 +150,79 @@ class CheckboxTreeElement extends HTMLElement {
     }
   }
 
+  /**
+   * Builds a node from `def` (always a leaf — it has no children yet) and inserts it under `parent`
+   * at `index` (appended if omitted). `parent` omitted/null inserts a root. A leaf `parent` flips to
+   * a branch; in `'leaves'` mode it loses its checkbox (a group has no authoritative checked state,
+   * so it is forgotten from the model too). Surgical: only the affected sibling group and `parent`'s
+   * own ancestors are re-stamped/reflected.
+   */
+  add<T extends ITreeDef>(def: T, parent?: TreeNodeElement | string | null, index?: number): void {
+    const parentNode = parent == null ? null : this.#resolve(parent);
+
+    const node = createTreeNode(this.#getLabel!(def));
+    node.dataset.id = def.id;
+    if (def.parent_id !== null) node.dataset.parentId = def.parent_id;
+    node.setLeaf(true);
+    this.#addCheckbox(node); // a new leaf always gets a checkbox, in both 'all' and 'leaves' modes
+
+    this.#insertInto(parentNode, node, index);
+    if (parentNode) this.#onParentGainedChild(parentNode);
+
+    this.#restampSiblings(this.#containerOf(parentNode));
+    this.#reflectNodeAndAncestors(parentNode);
+    this.#repairRoving();
+  }
+
+  /**
+   * Detaches `node` and its subtree, forgetting any of its checked leaves. If that empties its
+   * parent, the parent flips back to a leaf (regaining a checkbox in `'leaves'` mode). Surgical:
+   * only the former parent's sibling group and ancestors are re-stamped/reflected.
+   */
+  removeNode(node: TreeNodeElement | string): void {
+    const target = this.#resolve(node);
+    if (!target) return;
+
+    const leafIds = target.isLeaf
+      ? (target.dataset.id !== undefined ? [target.dataset.id] : [])
+      : this.#descendantLeafIds(target);
+    this.#model.forget(leafIds);
+
+    const parent = this.#parentRow(target);
+    target.remove();
+    if (parent && parent.childCount === 0) this.#onParentEmptied(parent);
+
+    this.#restampSiblings(this.#containerOf(parent));
+    this.#reflectNodeAndAncestors(parent);
+    this.#repairRoving();
+  }
+
+  /**
+   * Re-parents `node` under `newParent` at `index` (root if null/omitted), keeping its checked
+   * leaves. Re-parenting a node into its own subtree throws (DOM unchanged) rather than corrupting
+   * the tree. Updates leaf/branch on both the old and new parent, re-stamps both sibling groups and
+   * the moved subtree's levels (depth may have changed), and reflects both parents' ancestors.
+   */
+  move(node: TreeNodeElement | string, newParent?: TreeNodeElement | string | null, index?: number): void {
+    const target = this.#resolve(node);
+    if (!target) return;
+    const targetParent = newParent == null ? null : this.#resolve(newParent);
+    const oldParent = this.#parentRow(target);
+
+    this.#reparent(targetParent, target, index);
+
+    if (this.#wasEmptiedByMove(oldParent, targetParent)) this.#onParentEmptied(oldParent);
+    if (targetParent) this.#onParentGainedChild(targetParent);
+
+    this.#restampSiblings(this.#containerOf(oldParent));
+    this.#restampSiblings(this.#containerOf(targetParent));
+    this.#restampLevels(target);
+
+    this.#reflectNodeAndAncestors(oldParent);
+    this.#reflectNodeAndAncestors(targetParent);
+    this.#repairRoving();
+  }
+
   /** Applies the accessible name, forwarding a consumer-supplied `aria-label`/`aria-labelledby`, else defaulting. */
   #applyAccessibleName(): void {
     if (this.hasAttribute('aria-label') || this.hasAttribute('aria-labelledby')) return;
@@ -400,6 +473,139 @@ class CheckboxTreeElement extends HTMLElement {
     if (this.#tabStop) this.#tabStop.tabIndex = -1;
     this.#tabStop = node;
     if (node) node.tabIndex = 0;
+  }
+
+  /**
+   * Resolves a node argument to its element: passed through as-is, or looked up by `data-id` with a
+   * one-off scoped `querySelector`. The **only** id→element lookup site — never a maintained registry.
+   */
+  #resolve(nodeOrId: TreeNodeElement | string): TreeNodeElement | null {
+    if (typeof nodeOrId !== 'string') return nodeOrId;
+    return this.querySelector<TreeNodeElement>(`[data-id="${CSS.escape(nodeOrId)}"]`);
+  }
+
+  /**
+   * Inserts `node` under `parentNode` (root if `null`) at `index` (appended if omitted).
+   * `parentNode.appendChildNode` guarantees its group exists and `node` is attached before any
+   * repositioning, so a specific `index` is honored by a single follow-up `insertBefore`.
+   */
+  #insertInto(parentNode: TreeNodeElement | null, node: TreeNodeElement, index?: number): void {
+    if (parentNode) parentNode.appendChildNode(node);
+    else this.appendChild(node);
+
+    if (index === undefined) return;
+    const container = this.#containerOf(parentNode);
+    const siblings = this.#directNodes(container).filter((n) => n !== node);
+    const ref = siblings[index];
+    if (ref) container.insertBefore(node, ref);
+  }
+
+  /** The container `parentNode`'s children are inserted into: its group, or the tree root when `null`. */
+  #containerOf(parentNode: TreeNodeElement | null): Element {
+    return parentNode ? parentNode.querySelector<HTMLElement>(`:scope > .${treeCss.group}`)! : this;
+  }
+
+  /** Removes the checkbox visual + `aria-checked` from `node` and forgets its id from the model (a group has no authoritative checked state). */
+  #dropCheckbox(node: TreeNodeElement): void {
+    node.rowEl.querySelector<HTMLElement>(`:scope > .${treeCss.checkbox}`)?.remove();
+    node.removeAttribute('aria-checked');
+    if (node.dataset.id !== undefined) this.#model.forget([node.dataset.id]);
+  }
+
+  /**
+   * Re-parents `node` under `targetParent` (root if `null`) at `index`, translating the native
+   * cycle-detection error (`HierarchyRequestError`, thrown when `targetParent` is inside `node`'s
+   * own subtree) into a clear message. DOM is unchanged on throw — the native check runs before any
+   * mutation.
+   */
+  #reparent(targetParent: TreeNodeElement | null, node: TreeNodeElement, index?: number): void {
+    try {
+      this.#insertInto(targetParent, node, index);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'HierarchyRequestError') {
+        throw new Error('move: cannot move a node into its own subtree');
+      }
+      throw err;
+    }
+  }
+
+  /** Whether `oldParent` lost its only child to a move away from it (a same-parent reorder doesn't count). */
+  #wasEmptiedByMove(oldParent: TreeNodeElement | null, targetParent: TreeNodeElement | null): oldParent is TreeNodeElement {
+    return oldParent !== null && oldParent !== targetParent && oldParent.childCount === 0;
+  }
+
+  /** A parent that just lost its last child flips back to a leaf, regaining a checkbox in `'leaves'` mode. */
+  #onParentEmptied(parent: TreeNodeElement): void {
+    parent.setLeaf(true);
+    if (this.#checkable === 'leaves') this.#addCheckbox(parent);
+  }
+
+  /** A leaf parent that just gained a child flips to a branch, losing its checkbox in `'leaves'` mode. */
+  #onParentGainedChild(parent: TreeNodeElement): void {
+    if (!parent.isLeaf) return;
+    parent.setLeaf(false);
+    if (this.#checkable === 'leaves') this.#dropCheckbox(parent);
+  }
+
+  /** Reflects `node` itself and its ancestors — the surgical scope for a structural mutation's checkbox effects. No-op for `null`. */
+  #reflectNodeAndAncestors(node: TreeNodeElement | null): void {
+    if (!node) return;
+    this.#reflectState(node);
+    this.#reflectAncestors(node);
+  }
+
+  /** Re-stamps `aria-level`/`aria-setsize`/`aria-posinset` for the direct rows of `container` (a group or the tree root). */
+  #restampSiblings(container: Element): void {
+    const level = this.#levelFor(container);
+    const nodes = this.#directNodes(container);
+    const setsize = String(nodes.length);
+    nodes.forEach((node, i) => {
+      node.setAttribute('aria-level', String(level));
+      node.setAttribute('aria-setsize', setsize);
+      node.setAttribute('aria-posinset', String(i + 1));
+    });
+  }
+
+  /** The `aria-level` `container`'s direct rows get: one more than the number of `<tree-node>` ancestors it has. */
+  #levelFor(container: Element): number {
+    if (container === this) return 1;
+    let level = 1;
+    for (let el: Element | null = container.parentElement; el && el !== this; el = el.parentElement) {
+      if (el instanceof TreeNodeElement) level++;
+    }
+    return level;
+  }
+
+  /** Re-stamps `aria-level` throughout `node`'s subtree from its own (already-correct) level — a moved subtree's descendants re-level. */
+  #restampLevels(node: TreeNodeElement): void {
+    const level = Number(node.getAttribute('aria-level') ?? '1');
+    this.#restampLevelsFrom(node, level);
+  }
+
+  #restampLevelsFrom(node: TreeNodeElement, level: number): void {
+    const group = node.querySelector<HTMLElement>(`:scope > .${treeCss.group}`);
+    if (!group) return;
+    for (const child of this.#directNodes(group)) {
+      child.setAttribute('aria-level', String(level + 1));
+      this.#restampLevelsFrom(child, level + 1);
+    }
+  }
+
+  /** Direct `<tree-node>` children of `container` (a group or the tree root). */
+  #directNodes(container: Element): TreeNodeElement[] {
+    const nodes: TreeNodeElement[] = [];
+    for (const child of container.children) if (child instanceof TreeNodeElement) nodes.push(child);
+    return nodes;
+  }
+
+  /** Ensures exactly one visible row is the tab stop; reassigns (and moves focus, if it was focused) when the current one detached. */
+  #repairRoving(): void {
+    if (this.#tabStop && this.contains(this.#tabStop)) return;
+    const wasFocused = this.#tabStop !== null && document.activeElement === this.#tabStop;
+    this.#tabStop = null;
+    const next = this.#firstVisibleRow();
+    this.#setTabStop(next);
+    if (wasFocused && next) next.focus();
   }
 }
 

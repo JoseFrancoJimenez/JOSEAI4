@@ -443,3 +443,190 @@ describe('CheckboxTreeElement — toggling is surgical', () => {
     expect(byId(tree, 'archive').getAttribute('aria-checked')).toBe('false');
   });
 });
+
+describe('CheckboxTreeElement — add', () => {
+  it('adding a first child flips a leaf to a branch (toggle appears, aria-expanded=false)', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const images = byId(tree, 'images');
+    expect(images.isLeaf).toBe(true);
+
+    tree.add({ id: 'photo1', parent_id: 'images' }, images);
+    expect(images.isLeaf).toBe(false);
+    expect(images.getAttribute('aria-expanded')).toBe('false');
+    expect(byId(tree, 'photo1')).toBeTruthy();
+  });
+
+  it("in 'leaves' mode, a leaf becoming a branch loses its checkbox", () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel, { checkable: 'leaves' as Checkable });
+    const images = byId(tree, 'images');
+    expect(checkboxSpan(images)).toBeTruthy();
+
+    tree.add({ id: 'photo1', parent_id: 'images' }, images);
+    expect(images.rowEl.querySelector(':scope > .tree-node__checkbox')).toBeNull();
+    expect(images.hasAttribute('aria-checked')).toBe(false);
+  });
+
+  it('adding an unchecked leaf into a fully-checked group flips that group (and its ancestors) to mixed', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const reports = byId(tree, 'reports');
+    const docs = byId(tree, 'docs');
+    tree.setChecked(['q1', 'q2', 'images']); // every leaf under docs checked
+    expect(docs.getAttribute('aria-checked')).toBe('true');
+
+    tree.add({ id: 'q3', parent_id: 'reports' }, reports);
+    expect(reports.getAttribute('aria-checked')).toBe('mixed');
+    expect(docs.getAttribute('aria-checked')).toBe('mixed');
+  });
+
+  it('supports a root-level add (parent omitted/null)', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    tree.add({ id: 'trash', parent_id: null });
+    const trash = byId(tree, 'trash');
+    expect(trash.parentElement).toBe(tree);
+    expect(trash.getAttribute('aria-level')).toBe('1');
+  });
+
+  it('accepts a string id for the parent argument, in addition to an element', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    tree.add({ id: 'photo1', parent_id: 'images' }, 'images');
+    expect(byId(tree, 'photo1')).toBeTruthy();
+    expect(byId(tree, 'images').isLeaf).toBe(false);
+  });
+});
+
+describe('CheckboxTreeElement — removeNode', () => {
+  it('removing the last child flips a branch back to a leaf', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const reports = byId(tree, 'reports');
+    tree.removeNode('q1');
+    expect(reports.isLeaf).toBe(false);
+    tree.removeNode('q2');
+    expect(reports.isLeaf).toBe(true);
+    expect(reports.hasAttribute('aria-expanded')).toBe(false);
+  });
+
+  it("in 'leaves' mode, a branch emptied back to a leaf regains a checkbox", () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel, { checkable: 'leaves' as Checkable });
+    tree.removeNode('q1');
+    tree.removeNode('q2');
+    const reports = byId(tree, 'reports');
+    expect(reports.isLeaf).toBe(true);
+    expect(checkboxSpan(reports)).toBeTruthy();
+    expect(reports.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('removing an unchecked leaf from a mixed group can flip it to checked', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    tree.setChecked(['q1']); // reports is mixed (q2 unchecked)
+    const reports = byId(tree, 'reports');
+    expect(reports.getAttribute('aria-checked')).toBe('mixed');
+
+    tree.removeNode('q2');
+    expect(reports.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('drops the removed leaves from getChecked, whether removed directly or as part of a subtree', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    tree.setChecked(['q1', 'q2', 'archive']);
+
+    tree.removeNode('reports'); // removes the q1/q2 subtree
+    expect(tree.getChecked()).toEqual(['archive']);
+
+    tree.removeNode('archive'); // removes a checked leaf directly
+    expect(tree.getChecked()).toEqual([]);
+  });
+});
+
+describe('CheckboxTreeElement — move', () => {
+  it("re-parents a node, correcting aria-level/aria-posinset — including a moved subtree's descendants", () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const reports = byId(tree, 'reports'); // level 2, under docs
+
+    tree.move('reports', null);
+
+    expect(reports.parentElement).toBe(tree);
+    expect(reports.getAttribute('aria-level')).toBe('1');
+    expect(reports.getAttribute('aria-setsize')).toBe('3');
+    expect(reports.getAttribute('aria-posinset')).toBe('3');
+    expect(byId(tree, 'q1').getAttribute('aria-level')).toBe('2');
+    expect(byId(tree, 'q2').getAttribute('aria-level')).toBe('2');
+  });
+
+  it('keeps its checked leaves after a move', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    tree.setChecked(['q1']);
+    tree.move('reports', null);
+    expect(tree.getChecked()).toEqual(['q1']);
+    expect(byId(tree, 'q1').getAttribute('aria-checked')).toBe('true');
+  });
+
+  it("updates both the old and new parents' group states", () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    tree.setChecked(['q1', 'q2']); // reports fully checked; docs mixed (images unchecked)
+    const docs = byId(tree, 'docs');
+    expect(docs.getAttribute('aria-checked')).toBe('mixed');
+
+    tree.move('reports', null);
+    expect(docs.getAttribute('aria-checked')).toBe('false'); // only images (unchecked) remains under docs
+    expect(docs.isLeaf).toBe(false); // images still there
+  });
+});
+
+describe('CheckboxTreeElement — move edge cases', () => {
+  it('a cycle-forming move throws and leaves the DOM unchanged', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const docs = byId(tree, 'docs');
+    const reports = byId(tree, 'reports');
+    const docsParentBefore = docs.parentElement;
+
+    expect(() => tree.move(docs, reports)).toThrow(/cannot move a node into its own subtree/);
+    expect(docs.parentElement).toBe(docsParentBefore);
+    expect(byId(tree, 'reports')).toBe(reports);
+  });
+
+  it('supports a root-level move (newParent omitted/null) and resolves a string-id argument', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    tree.move('images', null);
+    const images = byId(tree, 'images');
+    expect(images.parentElement).toBe(tree);
+    expect(images.getAttribute('aria-level')).toBe('1');
+  });
+
+  it('removeNode/move of the tab-holding node reassigns tabindex=0', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const docs = byId(tree, 'docs'); // first root — the initial tab stop
+    expect(docs.tabIndex).toBe(0);
+
+    tree.removeNode('docs');
+    const tabbable = allNodes(tree).filter((n) => n.tabIndex === 0);
+    expect(tabbable).toEqual([byId(tree, 'archive')]);
+  });
+
+  it('mutation is surgical — nodes outside the affected region keep their identity and state', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const archive = byId(tree, 'archive');
+    const archiveCheckbox = checkboxSpan(archive);
+
+    tree.add({ id: 'photo1', parent_id: 'images' }, 'images');
+
+    expect(byId(tree, 'archive')).toBe(archive);
+    expect(checkboxSpan(archive)).toBe(archiveCheckbox);
+    expect(archive.getAttribute('aria-checked')).toBe('false');
+  });
+});

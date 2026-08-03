@@ -81,6 +81,12 @@ tree-node {
     display: none;
   }
 
+  /* A leaf never shows children — defensive for removeNode's branch→leaf transition, which retains
+     the (now empty) group element rather than tearing it down (see checkbox-tree.ts#removeNode). */
+  &.is-leaf > .tree-node__group {
+    display: none;
+  }
+
   &:focus-visible {
     outline: 2px solid var(--tree-focus-ring, #5b8af5);
     outline-offset: -2px;
