@@ -74,13 +74,27 @@ class TreeNodeElement extends HTMLElement {
 
   /** Expands the node (no-op on a leaf or if already expanded). Attaches the child group. Emits `toggle`. */
   expand(): void {
-    if (this.#expanded || this.#leaf) return;
+    if (this.#applyExpand()) this.#emitToggle();
+  }
+
+  /**
+   * Expands **without** emitting `toggle` — for a container-driven *initial* expansion (a node whose
+   * def was marked expanded), which is setup rather than a user action to broadcast. Same visual/ARIA
+   * effect as {@link expand}; only the event is suppressed.
+   */
+  expandSilently(): void {
+    this.#applyExpand();
+  }
+
+  /** Core expand: attaches the retained group and reflects expanded state. Returns `false` if it was a no-op. */
+  #applyExpand(): boolean {
+    if (this.#expanded || this.#leaf) return false;
     const group = this.#ensureGroup();
     if (group.parentNode !== this) this.appendChild(group);
     this.#expanded = true;
     this.classList.add(treeCss.expanded);
     this.setAttribute('aria-expanded', 'true');
-    this.#emitToggle();
+    return true;
   }
 
   /** Collapses the node (no-op if already collapsed). Detaches — but retains — the child group. Emits `toggle`. */
