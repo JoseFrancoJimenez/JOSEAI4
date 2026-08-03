@@ -1,13 +1,9 @@
 import { TocComponent, TocModel, TreeViewElement } from "@mini/lib/widgets";
 import type { ITreeNodeDef } from "@mini/lib/widgets";
 import { people } from "./people.ts";
+import type { ITocNode } from "@mini/lib/widgets";
 
-const model = new TocModel(people());
 
-const host = document.createElement(TocComponent.tagName) as TocComponent;
-document.getElementById("toc")!.appendChild(host);
-host.setup(model);
-host.expandAll();
 
 /** Plain label content — the minimal `renderNode`. */
 function renderLabel(def: ITreeNodeDef): HTMLElement {
@@ -31,6 +27,16 @@ function renderCheckbox(def: ITreeNodeDef): HTMLElement {
   return label;
 }
 
+function renderCheckboxOld(def: ITocNode): HTMLElement {
+  const label = document.createElement("label");
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  const text = document.createElement("span");
+  text.textContent = def.id;
+  label.append(checkbox, text);
+  return label;
+}
+
 const treeLabels = document.createElement(TreeViewElement.tagName) as TreeViewElement;
 treeLabels.setAttribute("aria-label", "People (labels)");
 document.getElementById("tree-labels")!.appendChild(treeLabels);
@@ -42,5 +48,15 @@ treeCheckboxes.setAttribute("aria-label", "People (checkboxes)");
 document.getElementById("tree-checkboxes")!.appendChild(treeCheckboxes);
 treeCheckboxes.build(people(), renderCheckbox);
 treeCheckboxes.expandAll();
+
+
+
+const model = new TocModel(people());
+
+const host = document.createElement(TocComponent.tagName) as TocComponent;
+document.getElementById("toc")!.appendChild(host);
+host.setup(model, renderCheckboxOld);
+host.expandAll();
+
 
 console.log("toc-demo booted", { nodes: model.size });
