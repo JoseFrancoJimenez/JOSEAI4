@@ -1,5 +1,5 @@
 import './tree.css';
-import { treeCss } from './tree-dom.ts';
+import { treeCss, interactiveSelector } from './tree-dom.ts';
 import { TreeNodeElement, createTreeNode } from './tree-node.ts';
 
 /**
@@ -56,14 +56,18 @@ class TreeViewElement extends HTMLElement {
     this.setAttribute('role', 'tree');
     this.#applyAccessibleName();
     this.addEventListener(TreeNodeElement.events.toggle, this.#onNodeToggle);
+    this.addEventListener('keydown', this.#onKeyDown);
+    this.addEventListener('focusin', this.#onFocusIn);
     this.#startObserver();
     this.#stampFrom(this, 1); // covers a build() that ran before connection (roots already present)
     this.#ensureRovingTabStop();
   }
 
-  /** Tears down the observer and the toggle listener. */
+  /** Tears down the observer and the toggle/keyboard/focus listeners. */
   disconnectedCallback(): void {
     this.removeEventListener(TreeNodeElement.events.toggle, this.#onNodeToggle);
+    this.removeEventListener('keydown', this.#onKeyDown);
+    this.removeEventListener('focusin', this.#onFocusIn);
     this.#observer?.disconnect();
     this.#observer = null;
   }
@@ -165,6 +169,135 @@ class TreeViewElement extends HTMLElement {
     if (!def.expanded || node.isLeaf) return;
     node.expandSilently();
     this.#fillChildren(node);
+  }
+
+  /**
+   * One row-scoped action per handled key. Keyed by {@link KeyboardEvent.key}; a handler decides
+   * whether focus moves (calling {@link TreeViewElement.#focusRow}) or the row itself changes state.
+   */
+  #keyHandlers: Record<string, (row: TreeNodeElement) => void> = {
+    ArrowDown: (row) => { const next = this.#nextRow(row); if (next) this.#focusRow(next); },
+    ArrowUp: (row) => { const prev = this.#prevRow(row); if (prev) this.#focusRow(prev); },
+    Home: () => { const first = this.querySelector<TreeNodeElement>(TreeNodeElement.tagName); if (first) this.#focusRow(first); },
+    End: () => {
+      const rows = this.querySelectorAll<TreeNodeElement>(TreeNodeElement.tagName);
+      const last = rows[rows.length - 1];
+      if (last) this.#focusRow(last);
+    },
+    ArrowRight: (row) => this.#onArrowRight(row),
+    ArrowLeft: (row) => this.#onArrowLeft(row),
+    Enter: (row) => row.toggle(),
+    ' ': (row) => row.toggle(),
+  };
+
+  /**
+   * Delegated keyboard handler implementing WAI-ARIA APG tree navigation (Up/Down/Home/End/Left/Right/
+   * Enter/Space) via {@link #keyHandlers}. Ignored when the key originated inside consumer interactive
+   * content, so injected controls (inputs, buttons, links) keep their native key handling.
+   */
+  #onKeyDown = (ev: KeyboardEvent): void => {
+    const target = ev.target as Element;
+    const row = target.closest<TreeNodeElement>(TreeNodeElement.tagName);
+    if (!row) return;
+    if (target.closest(interactiveSelector)) return;
+    const handler = this.#keyHandlers[ev.key];
+    if (!handler) return;
+    handler(row);
+    ev.preventDefault();
+  };
+
+  /** Right: leaf → no-op; collapsed branch → expand (focus stays); expanded branch → focus first child. */
+  #onArrowRight(row: TreeNodeElement): void {
+    if (row.isLeaf) return;
+    if (!row.expanded) { row.expand(); return; }
+    const child = this.#firstChildRow(row);
+    if (child) this.#focusRow(child);
+  }
+
+  /** Left: expanded branch → collapse (focus stays); else → focus parent (no-op at a root). */
+  #onArrowLeft(row: TreeNodeElement): void {
+    if (row.expanded) { row.collapse(); return; }
+    const parent = this.#parentRow(row);
+    if (parent) this.#focusRow(parent);
+  }
+
+  /** Syncs the roving tab stop to whatever row focus lands on (mouse click, or focus into a row's content) — bookkeeping only. */
+  #onFocusIn = (ev: FocusEvent): void => {
+    const row = (ev.target as Element).closest<TreeNodeElement>(TreeNodeElement.tagName);
+    if (row) this.#setTabStop(row);
+  };
+
+  /** Moves the roving tab stop to `row` and moves DOM focus to it (keyboard moves are synchronous — focus can't be async). */
+  #focusRow(row: TreeNodeElement): void {
+    this.#setTabStop(row);
+    row.focus();
+  }
+
+  /** The rendered row directly following `row` in tree order: its first rendered child, else the next row found by ascending. */
+  #nextRow(row: TreeNodeElement): TreeNodeElement | null {
+    const child = this.#firstChildRow(row);
+    if (child) return child;
+    let current: TreeNodeElement | null = row;
+    while (current) {
+      const sibling = this.#nextSiblingRow(current);
+      if (sibling) return sibling;
+      current = this.#parentRow(current);
+    }
+    return null;
+  }
+
+  /** The rendered row directly preceding `row` in tree order: its previous sibling's deepest visible descendant, else its parent. */
+  #prevRow(row: TreeNodeElement): TreeNodeElement | null {
+    const sibling = this.#prevSiblingRow(row);
+    if (sibling) return this.#lastVisibleDescendant(sibling);
+    return this.#parentRow(row);
+  }
+
+  /** Descends `row`'s last-child chain to the deepest currently-rendered row. */
+  #lastVisibleDescendant(row: TreeNodeElement): TreeNodeElement {
+    let current = row;
+    let child = this.#lastChildRow(current);
+    while (child) {
+      current = child;
+      child = this.#lastChildRow(current);
+    }
+    return current;
+  }
+
+  /** `row`'s first rendered child, or `null` if collapsed/leaf/childless. */
+  #firstChildRow(row: TreeNodeElement): TreeNodeElement | null {
+    if (!row.expanded) return null;
+    const group = row.querySelector<HTMLElement>(`:scope > .${treeCss.group}`);
+    const first = group?.firstElementChild;
+    return first instanceof TreeNodeElement ? first : null;
+  }
+
+  /** `row`'s last rendered child, or `null` if collapsed/leaf/childless. */
+  #lastChildRow(row: TreeNodeElement): TreeNodeElement | null {
+    if (!row.expanded) return null;
+    const group = row.querySelector<HTMLElement>(`:scope > .${treeCss.group}`);
+    const last = group?.lastElementChild;
+    return last instanceof TreeNodeElement ? last : null;
+  }
+
+  /** `row`'s next rendered sibling within its group (or the root list), or `null`. */
+  #nextSiblingRow(row: TreeNodeElement): TreeNodeElement | null {
+    const sibling = row.nextElementSibling;
+    return sibling instanceof TreeNodeElement ? sibling : null;
+  }
+
+  /** `row`'s previous rendered sibling within its group (or the root list), or `null`. */
+  #prevSiblingRow(row: TreeNodeElement): TreeNodeElement | null {
+    const sibling = row.previousElementSibling;
+    return sibling instanceof TreeNodeElement ? sibling : null;
+  }
+
+  /** `row`'s owning `<tree-node>` (through its child group), or `null` for a root. */
+  #parentRow(row: TreeNodeElement): TreeNodeElement | null {
+    const parent = row.parentElement;
+    if (!parent || !parent.classList.contains(treeCss.group)) return null;
+    const owner = parent.parentElement;
+    return owner instanceof TreeNodeElement ? owner : null;
   }
 
   /** Starts the single observer that keeps positional ARIA and the roving invariant correct. */

@@ -102,7 +102,7 @@ treeView.append(layers);     // a root
 **Tests (`tree-node.test.ts`):** uniform row for leaf & branch; content placed + `aria-labelledby` wired + unique ids across nodes; `setLeaf` — leaf hides toggle & drops `aria-expanded`, branch shows toggle & `aria-expanded="false"`, branch→leaf→branch keeps `aria-expanded` reflecting current state; `expand()` attaches the group (`role="group"`, `aria-expanded="true"`); `collapse()` detaches but **retains** (same child instances on re-expand; a typed injected `<input>` keeps value+caret across a cycle); `toggle()`/click/content-click all emit `tree-node:toggle` with `{expanded}`; leaf/interactive-control clicks do **not** toggle; baseline `tabindex=-1`.
 **Done when:** `pnpm vitest run src/lib/widgets/tree` green, `pnpm typecheck` adds no new errors, `pnpm lint` clean. **(Met: 14/14 tests pass; no new type errors; eslint clean.)**
 
-### Task 2 — `<tree-view>` container + `build()` + ARIA/roving observer
+### Task 2 — `<tree-view>` container + `build()` + ARIA/roving observer ✅ DONE
 **Depends on:** Task 1.
 **Files:** create `tree-view.ts`, `tree-view.test.ts`; extend `tree.css` (tree + group + focus-ring vars), `index.ts` (export `TreeViewElement`).
 **Goal:** compose nodes into a labeled `role="tree"` from a flat array, with correct positional ARIA and a self-healing single tab stop — a statically complete, screen-reader-correct tree (no keyboard yet).
@@ -113,9 +113,9 @@ treeView.append(layers);     // a root
 - MutationObserver (`childList`, `subtree`): on mutations, **region-scoped + batched** — re-stamp `aria-level` (from nesting depth), `aria-setsize`/`aria-posinset` (from sibling group) for added nodes and the affected sibling groups; and maintain the roving invariant (ensure exactly one rendered node has `tabindex=0`; if the active one was removed, reassign to a rendered fallback).
 - `expandAll()` / `collapseAll()`: `expandAll` repeatedly expands rendered branches until none remain collapsed (since expanding builds the next level synchronously); `collapseAll` collapses all rendered branches.
 **Tests (`tree-view.test.ts`, add a `sampleDefs()` + `mount()` helper):** `build()` renders only roots (deep nodes absent until expand); expanding a branch lazily builds its **direct** children (grandchildren still absent) from the map; re-expand after collapse reuses the **same** child instances (not rebuilt); `data-id`/`data-parent-id` stamped, `renderNode` output in content wrapper; `role="tree"` + accessible name (default and forwarded `aria-label`); `role="group"` on child groups; `role="treeitem"` on nodes; `aria-level`/`aria-setsize`/`aria-posinset` correct after a tick, at every level; exactly one `tabindex=0` after build; removing the active node via raw `node.remove()` reassigns the tab stop (after a tick); `expandAll` materializes the whole tree, `collapseAll` collapses it. Flush a microtask before observer-dependent assertions.
-**Done when:** suite green, typecheck no new errors, lint clean.
+**Done when:** suite green, typecheck no new errors, lint clean. **(Met.)**
 
-### Task 3 — keyboard navigation + focus-driven roving
+### Task 3 — keyboard navigation + focus-driven roving ✅ DONE
 **Depends on:** Task 2.
 **Files:** extend `tree-view.ts`, `tree.css` (`tree-node:focus-visible`), `tree-view.test.ts`.
 **Goal:** full keyboard operability on top of the roving invariant.
@@ -125,7 +125,7 @@ treeView.append(layers);     // a root
 - Keyboard moves set `tabindex` synchronously and call `.focus()` on the new row.
 - `tree-node:focus-visible` outline using the existing focus-ring CSS var.
 **Tests:** Down/Up move among rendered rows in document order, clamped at both ends; Home/End jump to first/last; Right expands a collapsed branch then (when expanded) descends to first child, no-op on leaf; Left collapses an expanded branch then ascends to parent, no-op at a root; Enter/Space toggle a branch and no-op on a leaf; keys ignored (no move/toggle) when focus is in injected interactive content; clicking a row's content/toggle moves the roving stop to it (focusin) and the click still toggles; exactly one `tabindex=0` holds after every keyboard op.
-**Done when:** suite green, typecheck no new errors, lint clean.
+**Done when:** suite green, typecheck no new errors, lint clean. **(Met: 46/46 tests pass; no new type errors; eslint clean.)**
 
 ### Task 4 — `add` / `remove` / `move` operations
 **Depends on:** Task 2 (independent of Task 3).

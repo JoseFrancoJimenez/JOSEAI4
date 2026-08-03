@@ -52,6 +52,10 @@ const tabStops = (host: TreeViewElement): HTMLElement[] =>
 /** Flush a macrotask so the MutationObserver (ARIA + roving) has run. */
 const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
+/** Dispatches a bubbling `keydown` with `key`, as the delegated listener on `<tree-view>` expects. */
+const press = (row: HTMLElement, key: string): boolean =>
+  row.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+
 afterEach(() => {
   document.body.replaceChildren();
 });
@@ -303,6 +307,156 @@ describe('TreeViewElement — initial expanded hint (silence & ARIA)', () => {
     expect(node(host, 'Highways')!.getAttribute('aria-level')).toBe('3');
     expect(node(host, 'Streets')!.getAttribute('aria-posinset')).toBe('2');
     expect(node(host, 'Streets')!.getAttribute('aria-setsize')).toBe('2');
+  });
+});
+
+describe('TreeViewElement — keyboard navigation: Up/Down', () => {
+  const order = ['Layers', 'Roads', 'Highways', 'Streets', 'Water', 'Basemaps'];
+
+  it('Down moves through rendered rows in document order, clamped at the end', () => {
+    const host = mount();
+    host.expandAll();
+    const first = node(host, order[0]!)!;
+    const last = node(host, order[order.length - 1]!)!;
+    first.focus();
+
+    for (let i = 0; i < order.length - 1; i++) {
+      press(node(host, order[i]!)!, 'ArrowDown');
+      expect(document.activeElement).toBe(node(host, order[i + 1]!));
+    }
+    press(last, 'ArrowDown'); // clamped — no wraparound
+    expect(document.activeElement).toBe(last);
+  });
+
+  it('Up moves through rendered rows in reverse document order, clamped at the start', () => {
+    const host = mount();
+    host.expandAll();
+    const first = node(host, order[0]!)!;
+    const last = node(host, order[order.length - 1]!)!;
+    last.focus();
+
+    for (let i = order.length - 1; i > 0; i--) {
+      press(node(host, order[i]!)!, 'ArrowUp');
+      expect(document.activeElement).toBe(node(host, order[i - 1]!));
+    }
+    press(first, 'ArrowUp'); // clamped — no wraparound
+    expect(document.activeElement).toBe(first);
+  });
+});
+
+describe('TreeViewElement — keyboard navigation: Home/End', () => {
+  it('jump to the first/last rendered row', () => {
+    const host = mount();
+    host.expandAll();
+    const water = node(host, 'Water')!;
+    water.focus();
+
+    press(water, 'End');
+    expect(document.activeElement).toBe(node(host, 'Basemaps'));
+
+    press(node(host, 'Basemaps')!, 'Home');
+    expect(document.activeElement).toBe(node(host, 'Layers'));
+  });
+});
+
+describe('TreeViewElement — keyboard navigation: Left/Right', () => {
+  it('Right expands a collapsed branch (focus stays), then descends to the first child once expanded; no-op on a leaf', () => {
+    const host = mount();
+    const layers = node(host, 'Layers')!;
+    layers.focus();
+
+    press(layers, 'ArrowRight');
+    expect(layers.expanded).toBe(true);
+    expect(document.activeElement).toBe(layers); // focus stays on expand
+
+    press(layers, 'ArrowRight');
+    expect(document.activeElement).toBe(node(host, 'Roads')); // descends once already expanded
+
+    const basemaps = node(host, 'Basemaps')!;
+    basemaps.focus();
+    press(basemaps, 'ArrowRight');
+    expect(document.activeElement).toBe(basemaps); // leaf — no-op
+  });
+
+  it('Left collapses an expanded branch (focus stays), then ascends to the parent; no-op at a root', () => {
+    const host = mount();
+    const layers = node(host, 'Layers')!;
+    layers.expand();
+    const roads = node(host, 'Roads')!;
+    roads.focus();
+
+    press(roads, 'ArrowLeft'); // Roads is collapsed → ascend to its parent
+    expect(document.activeElement).toBe(layers);
+
+    press(layers, 'ArrowLeft'); // Layers is expanded → collapse, focus stays
+    expect(layers.expanded).toBe(false);
+    expect(document.activeElement).toBe(layers);
+
+    press(layers, 'ArrowLeft'); // collapsed root — no-op
+    expect(document.activeElement).toBe(layers);
+  });
+});
+
+describe('TreeViewElement — keyboard navigation: activation & ignoring', () => {
+  it('Enter/Space toggle a branch and no-op on a leaf', () => {
+    const host = mount();
+    const layers = node(host, 'Layers')!;
+    layers.focus();
+
+    press(layers, 'Enter');
+    expect(layers.expanded).toBe(true);
+
+    press(layers, ' ');
+    expect(layers.expanded).toBe(false);
+
+    const basemaps = node(host, 'Basemaps')!;
+    basemaps.focus();
+    press(basemaps, 'Enter');
+    expect(basemaps.expanded).toBe(false); // leaf — no-op
+  });
+
+  it('ignores keys when focus is inside injected interactive content', () => {
+    const host = mount(sampleDefs(), (def) => {
+      if (def.id !== 'Layers') return defaultRender(def);
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(document.createElement('input'));
+      return wrapper;
+    });
+    const layers = node(host, 'Layers')!;
+    const input = layers.querySelector('input')!;
+    input.focus();
+
+    press(input, 'ArrowDown'); // would move to Basemaps if not ignored
+    expect(document.activeElement).toBe(input);
+
+    press(input, 'Enter'); // would expand Layers if not ignored
+    expect(layers.expanded).toBe(false);
+  });
+});
+
+describe('TreeViewElement — keyboard navigation: roving tab stop', () => {
+  it('focusin syncs the roving tab stop to the focused row; a click on that row still toggles', () => {
+    const host = mount();
+    host.expandAll();
+    const roads = node(host, 'Roads')!;
+    const content = roads.querySelector('.tree-node__content') as HTMLElement;
+
+    content.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+    expect(tabStops(host)).toEqual([roads]);
+
+    content.click();
+    expect(roads.expanded).toBe(false); // was expanded (via expandAll) → click collapses it
+  });
+
+  it('keeps exactly one tabindex=0 row through a sequence of keyboard operations', () => {
+    const host = mount();
+    host.expandAll();
+    node(host, 'Layers')!.focus();
+
+    for (const key of ['ArrowDown', 'ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'End', 'Home']) {
+      press(document.activeElement as HTMLElement, key);
+      expect(tabStops(host)).toHaveLength(1);
+    }
   });
 });
 

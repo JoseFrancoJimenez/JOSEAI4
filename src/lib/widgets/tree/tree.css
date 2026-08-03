@@ -22,6 +22,11 @@
 tree-node {
   display: block;
 
+  &:focus-visible {
+    outline: 2px solid var(--tree-focus-ring, #5b8af5);
+    outline-offset: -2px;
+  }
+
   /* Own row only — the `>` stops a parent's state from restyling descendant rows. */
   & > .tree-node__row {
     display: flex;
