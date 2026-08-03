@@ -1,4 +1,4 @@
-import { TocModel, CheckboxTreeElement } from "@mini/lib/widgets";
+import { TocModel, CheckboxTreeElement, type ICheckboxTreeChangeDetail } from "@mini/lib/widgets";
 import { people } from "./people.ts";
 import { familyDefs, allCheckable, leavesCheckable } from "./checkbox-people.ts";
 
@@ -15,6 +15,11 @@ function mountCheckboxTree(
   tree.setAttribute("aria-label", label);
   document.getElementById(containerId)!.appendChild(tree);
   tree.build(defs, (def) => def.id, { checkable });
+
+  tree.addEventListener(CheckboxTreeElement.events.change, (event) => {
+    const detail = (event as CustomEvent).detail as ICheckboxTreeChangeDetail;
+    console.log("checkbox-tree change", { label, ...detail });
+  });
 }
 
 mountCheckboxTree("checkbox-tree-cascade-all", "People (cascade, every node checkable)", allCheckable(familyDefs()), "cascade");
