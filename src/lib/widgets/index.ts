@@ -8,3 +8,7 @@ export type {
   ITocModelReadable,
   ITocModelWritable,
 } from './toc/toc.types.ts';
+export { TreeViewElement } from './tree/tree-view.ts';
+export type { ITreeNodeDef } from './tree/tree-view.ts';
+export { TreeNodeElement, createTreeNode } from './tree/tree-node.ts';
+export type { ITreeNodeToggleDetail } from './tree/tree-node.ts';

@@ -2,7 +2,39 @@
   "permissions": {
     "allow": [
       "PowerShell(pnpm vitest run src/lib/widgets/toc 2>&1)",
-      "PowerShell(pnpm typecheck 2>&1)"
+      "PowerShell(pnpm typecheck 2>&1)",
+      "PowerShell(pnpm vitest run src/lib/widgets/tree 2>&1)",
+      "PowerShell(pnpm exec eslint src/lib/widgets/tree 2>&1)",
+      "PowerShell(pnpm typecheck 2>&1 | Select-String -Pattern 'error TS' | ForEach-Object { \\($_ -split '\\\\\\('\\)[0] } | Sort-Object -Unique)",
+      "PowerShell(pnpm exec eslint src/lib/widgets/tree)",
+      "PowerShell(if \\($?\\) { \"ESLINT_CLEAN\" })",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(pnpm --filter lib vitest run src/lib/widgets/tree)",
+      "Bash(pnpm exec *)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(chromium-cli --help)",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(node -e \"require.resolve\\('playwright'\\)\")",
+      "Bash(node -e \"require.resolve\\('puppeteer'\\)\")",
+      "Bash(pnpm --filter @mini/toc-demo dev)",
+      "Bash(disown)",
+      "Read(//tmp/**)",
+      "Bash(npx playwright *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(curl -sf http://localhost:5173/)",
+      "Bash(mkdir -p \"c:/dev/JOSEAI4/src/apps/toc-demo/.claude/skills/run-toc-demo\" && ls \"c:/dev/JOSEAI4/src/apps/toc-demo/.claude/skills/run-toc-demo\")",
+      "Bash(ls -la \"$HOME/.claude/skills\" 2>&1 | head -20 *)",
+      "Read(//c/Users/franc/.claude/**)",
+      "Bash(rm -rf \"c:/dev/JOSEAI4/src/apps/toc-demo/.claude/skills\")",
+      "Bash(mkdir -p 'C:\\\\Users\\\\franc/.claude/skills/run-toc-demo')",
+      "Edit(~/.claude/skills/run-toc-demo/**)",
+      "Read(//c/Users/franc/.claude/skills/run-toc-demo/**)",
+      "Bash(node driver.mjs)"
+    ],
+    "additionalDirectories": [
+      "c:\\dev\\JOSEAI4\\src\\apps\\toc-demo\\.claude\\skills"
     ]
   }
 }
