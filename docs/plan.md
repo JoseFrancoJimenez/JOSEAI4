@@ -32,7 +32,7 @@ A widget typically **composes UI elements inside it**: the widget holds the inte
 **Materialize MVVM by complexity — do not build all layers up front:**
 
 1. **View only** — a UI element. No ViewModel, no Model.
-2. **View with view-state + commands inlined in the element** (no separate ViewModel), optionally holding a **Model it reads directly**. This is the pragmatic simple-widget form (tabs, accordion, TOC). The view-state (e.g. an expanded `Set`) lives in the element because it's light.
+2. **View with view-state + commands inlined in the element** (no separate ViewModel), optionally holding a **Model it reads directly**. This is the pragmatic simple-widget form (tabs, accordion, etc). The view-state (e.g. an expanded `Set`) lives in the element because it's light.
 3. **View + extracted ViewModel + Model** — the full form. Extract the ViewModel when presentation logic is non-trivial *and* you need DOM-free tests. Once extracted, the **ViewModel becomes the Model's sole consumer** and the View stops reading the Model directly.
 
 **The rule:** extract a layer when it **earns its place** — never preventively. **Testing is the tiebreaker:** if extracting makes non-trivial logic testable without a DOM, lean toward extracting; if the logic is trivial (formatting a value, holding one flag), don't — an empty pass-through layer is ceremony.
