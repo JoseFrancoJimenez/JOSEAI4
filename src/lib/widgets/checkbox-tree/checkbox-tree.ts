@@ -4,14 +4,26 @@ import { TreeNodeElement, createTreeNode } from './tree-node.ts';
 import { CheckboxModel } from './tri-state.ts';
 import type { CheckedState } from './tri-state.ts';
 
-/** Minimal shape of a build definition: a stable `id` and its `parent_id` (`null` for a root). */
+/**
+ * Minimal shape of a build definition: a stable `id` and its `parent_id` (`null` for a root).
+ * `type` (default `'label'`) decides whether the row gets a checkbox at all — independent of
+ * leaf/branch. `expanded` (default `false`) sets a branch's *initial* expand state only; the tree
+ * owns expansion thereafter and never re-reads it. Both are per-node and not inherited.
+ */
 interface ITreeDef {
   id: string;
   parent_id: string | null;
+  type?: 'checkbox' | 'label';
+  expanded?: boolean;
 }
 
-/** Whether every row gets a checkbox (`'all'`, tri-state) or only leaves do (`'leaves'`, no cascade). */
-type Checkable = 'all' | 'leaves';
+/**
+ * Tree-level policy for checkbox **groups** (irrelevant to leaves, which always store their own
+ * boolean). `'cascade'` derives a group's state from its descendant checkbox-leaves (supports
+ * `mixed`) and toggling it cascades to them. `'self'` gives every checkbox node — leaf or group —
+ * its own independent boolean: no aggregation, no `mixed`, no ancestor recomputation.
+ */
+type Checkable = 'cascade' | 'self';
 
 /** Options for {@link CheckboxTreeElement.build}. */
 interface IBuildOptions {
@@ -54,7 +66,7 @@ class CheckboxTreeElement extends HTMLElement {
   } as const;
 
   #getLabel: ((def: ITreeDef) => string) | null = null;
-  #checkable: Checkable = 'all';
+  #checkable: Checkable = 'cascade';
   #model = new CheckboxModel();
   #tabStop: TreeNodeElement | null = null;
 
@@ -79,11 +91,12 @@ class CheckboxTreeElement extends HTMLElement {
    * once per node, at creation, to produce its row's label text.
    * @param defs - Flat node definitions; a node is a branch iff some other def names it as `parent_id`.
    * @param getLabel - Produces each row's label text from its definition.
-   * @param options.checkable - `'all'` (default) renders a checkbox on every row; `'leaves'` only on leaves.
+   * @param options.checkable - `'cascade'` (default) or `'self'` — see {@link Checkable}. Governs
+   *   checkbox groups only; placement itself comes from each def's own `type`.
    */
   build<T extends ITreeDef>(defs: T[], getLabel: (def: T) => string, options: IBuildOptions = {}): void {
     this.#getLabel = getLabel as (def: ITreeDef) => string;
-    this.#checkable = options.checkable ?? 'all';
+    this.#checkable = options.checkable ?? 'cascade';
     this.#model = new CheckboxModel();
     this.replaceChildren();
 
@@ -100,6 +113,7 @@ class CheckboxTreeElement extends HTMLElement {
       const node = createTreeNode(this.#getLabel!(def));
       node.dataset.id = def.id;
       if (def.parent_id !== null) node.dataset.parentId = def.parent_id;
+      node.dataset.type = def.type ?? 'label';
       node.setAttribute('aria-level', String(level));
       node.setAttribute('aria-setsize', String(setsize));
       node.setAttribute('aria-posinset', String(posinset));
@@ -110,10 +124,10 @@ class CheckboxTreeElement extends HTMLElement {
         childDefs.forEach((childDef, i) => {
           node.appendChildNode(buildNode(childDef, level + 1, childDefs.length, i + 1));
         });
+        if (def.expanded === true) node.expand();
       }
 
-      const wantsCheckbox = this.#checkable === 'all' || !childDefs;
-      if (wantsCheckbox) this.#addCheckbox(node);
+      if (this.#isCheckbox(node)) this.#addCheckbox(node);
       return node;
     };
 
@@ -152,10 +166,12 @@ class CheckboxTreeElement extends HTMLElement {
 
   /**
    * Builds a node from `def` (always a leaf — it has no children yet) and inserts it under `parent`
-   * at `index` (appended if omitted). `parent` omitted/null inserts a root. A leaf `parent` flips to
-   * a branch; in `'leaves'` mode it loses its checkbox (a group has no authoritative checked state,
-   * so it is forgotten from the model too). Surgical: only the affected sibling group and `parent`'s
-   * own ancestors are re-stamped/reflected.
+   * at `index` (appended if omitted). `parent` omitted/null inserts a root. `def.type` (default
+   * `'label'`) decides checkbox placement, same as {@link build}. Surgical: only the affected
+   * sibling group and `parent`'s own ancestors are re-stamped/reflected.
+   *
+   * TODO(M3): a checkbox-leaf `parent` gaining this child becomes a checkbox-branch — in cascade
+   * mode its stored state should be forgotten (it now derives); self mode should keep it. Not yet done.
    */
   add<T extends ITreeDef>(def: T, parent?: TreeNodeElement | string | null, index?: number): void {
     const parentNode = parent == null ? null : this.#resolve(parent);
@@ -163,8 +179,9 @@ class CheckboxTreeElement extends HTMLElement {
     const node = createTreeNode(this.#getLabel!(def));
     node.dataset.id = def.id;
     if (def.parent_id !== null) node.dataset.parentId = def.parent_id;
+    node.dataset.type = def.type ?? 'label';
     node.setLeaf(true);
-    this.#addCheckbox(node); // a new leaf always gets a checkbox, in both 'all' and 'leaves' modes
+    if (this.#isCheckbox(node)) this.#addCheckbox(node);
 
     this.#insertInto(parentNode, node, index);
     if (parentNode) this.#onParentGainedChild(parentNode);
@@ -176,8 +193,8 @@ class CheckboxTreeElement extends HTMLElement {
 
   /**
    * Detaches `node` and its subtree, forgetting any of its checked leaves. If that empties its
-   * parent, the parent flips back to a leaf (regaining a checkbox in `'leaves'` mode). Surgical:
-   * only the former parent's sibling group and ancestors are re-stamped/reflected.
+   * parent, the parent flips back to a leaf. Surgical: only the former parent's sibling group and
+   * ancestors are re-stamped/reflected.
    */
   removeNode(node: TreeNodeElement | string): void {
     const target = this.#resolve(node);
@@ -231,8 +248,8 @@ class CheckboxTreeElement extends HTMLElement {
 
   /**
    * Inserts the decorative, `aria-hidden` checkbox visual into `node`'s row (after the toggle,
-   * before the content) and sets the row's initial `aria-checked="false"`. Called only when the
-   * mode calls for a checkbox on this node — a `'leaves'`-mode group gets neither.
+   * before the content) and sets the row's initial `aria-checked="false"`. Called only for a
+   * `type: 'checkbox'` node — leaf or group alike. A `'label'` node gets neither.
    */
   #addCheckbox(node: TreeNodeElement): void {
     const span = document.createElement('span');
@@ -241,6 +258,11 @@ class CheckboxTreeElement extends HTMLElement {
     span.dataset.state = 'unchecked';
     node.rowEl.insertBefore(span, node.contentEl);
     node.setAttribute('aria-checked', 'false');
+  }
+
+  /** Whether `node` was placed with a checkbox (`data-type === 'checkbox'`), as opposed to a plain label row. */
+  #isCheckbox(node: TreeNodeElement): boolean {
+    return node.type === 'checkbox';
   }
 
   /**
@@ -311,11 +333,14 @@ class CheckboxTreeElement extends HTMLElement {
   /**
    * The primary action on `node`: toggles checked state (leaf flips itself; group cascades to its
    * descendant leaves), reflects the affected subtree and ancestors, and emits
-   * {@link events.change}. In `'leaves'` mode a group has no checkbox, so its primary action is
-   * expand/collapse instead — and nothing is emitted.
+   * {@link events.change}. A `type: 'label'` node has no checkbox, so its primary action is
+   * expand/collapse instead (a no-op on a label leaf) — and nothing is emitted.
+   *
+   * TODO(M2): this still applies cascade semantics unconditionally to every checkbox node; the
+   * `checkable: 'self'` branch (own-boolean, no aggregation/ancestors) lands in Task M2.
    */
   #togglePrimary(node: TreeNodeElement): void {
-    if (this.#checkable === 'leaves' && !node.isLeaf) {
+    if (!this.#isCheckbox(node)) {
       node.toggleExpand();
       return;
     }
@@ -334,7 +359,7 @@ class CheckboxTreeElement extends HTMLElement {
   /**
    * Reflects `node`'s checkbox visual + `aria-checked` from the model. A leaf reads its own checked
    * state; a group aggregates over {@link #descendantLeafIds}. No-op if `node` has no checkbox
-   * (a `'leaves'`-mode group).
+   * (a `type: 'label'` node).
    */
   #reflectState(node: TreeNodeElement): void {
     const span = node.rowEl.querySelector<HTMLElement>(`:scope > .${treeCss.checkbox}`);
@@ -453,7 +478,7 @@ class CheckboxTreeElement extends HTMLElement {
     return sibling instanceof TreeNodeElement ? sibling : null;
   }
 
-  /** `row`'s owning `<tree-node>` (through its child group), or `null` for a root. */
+  /** `row`'s owning `<checkbox-tree-node>` (through its child group), or `null` for a root. */
   #parentRow(row: TreeNodeElement): TreeNodeElement | null {
     const parent = row.parentElement;
     if (!parent || !parent.classList.contains(treeCss.group)) return null;
@@ -505,13 +530,6 @@ class CheckboxTreeElement extends HTMLElement {
     return parentNode ? parentNode.querySelector<HTMLElement>(`:scope > .${treeCss.group}`)! : this;
   }
 
-  /** Removes the checkbox visual + `aria-checked` from `node` and forgets its id from the model (a group has no authoritative checked state). */
-  #dropCheckbox(node: TreeNodeElement): void {
-    node.rowEl.querySelector<HTMLElement>(`:scope > .${treeCss.checkbox}`)?.remove();
-    node.removeAttribute('aria-checked');
-    if (node.dataset.id !== undefined) this.#model.forget([node.dataset.id]);
-  }
-
   /**
    * Re-parents `node` under `targetParent` (root if `null`) at `index`, translating the native
    * cycle-detection error (`HierarchyRequestError`, thrown when `targetParent` is inside `node`'s
@@ -534,17 +552,19 @@ class CheckboxTreeElement extends HTMLElement {
     return oldParent !== null && oldParent !== targetParent && oldParent.childCount === 0;
   }
 
-  /** A parent that just lost its last child flips back to a leaf, regaining a checkbox in `'leaves'` mode. */
+  /**
+   * A parent that just lost its last child flips back to a leaf. Checkbox presence no longer
+   * depends on leaf/branch (it's driven by `type`, stamped once at creation) — see Task M3 for the
+   * cascade-mode storage transition this still owes (leaf ↔ branch stored/derived checked state).
+   */
   #onParentEmptied(parent: TreeNodeElement): void {
     parent.setLeaf(true);
-    if (this.#checkable === 'leaves') this.#addCheckbox(parent);
   }
 
-  /** A leaf parent that just gained a child flips to a branch, losing its checkbox in `'leaves'` mode. */
+  /** A leaf parent that just gained a child flips to a branch. See {@link #onParentEmptied}. */
   #onParentGainedChild(parent: TreeNodeElement): void {
     if (!parent.isLeaf) return;
     parent.setLeaf(false);
-    if (this.#checkable === 'leaves') this.#dropCheckbox(parent);
   }
 
   /** Reflects `node` itself and its ancestors — the surgical scope for a structural mutation's checkbox effects. No-op for `null`. */
@@ -566,7 +586,7 @@ class CheckboxTreeElement extends HTMLElement {
     });
   }
 
-  /** The `aria-level` `container`'s direct rows get: one more than the number of `<tree-node>` ancestors it has. */
+  /** The `aria-level` `container`'s direct rows get: one more than the number of `<checkbox-tree-node>` ancestors it has. */
   #levelFor(container: Element): number {
     if (container === this) return 1;
     let level = 1;
@@ -591,7 +611,7 @@ class CheckboxTreeElement extends HTMLElement {
     }
   }
 
-  /** Direct `<tree-node>` children of `container` (a group or the tree root). */
+  /** Direct `<checkbox-tree-node>` children of `container` (a group or the tree root). */
   #directNodes(container: Element): TreeNodeElement[] {
     const nodes: TreeNodeElement[] = [];
     for (const child of container.children) if (child instanceof TreeNodeElement) nodes.push(child);

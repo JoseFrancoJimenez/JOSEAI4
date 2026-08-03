@@ -2,8 +2,8 @@ checkbox-tree {
   display: block;
 }
 
-/* Rows are <tree-node> custom elements. Styles work standalone (bare node) and inside a <checkbox-tree>. */
-tree-node {
+/* Rows are <checkbox-tree-node> custom elements. Styles work standalone (bare node) and inside a <checkbox-tree>. */
+checkbox-tree-node {
   display: block;
 
   /* Own row only — the `>` stops a parent's state from restyling descendant rows. */

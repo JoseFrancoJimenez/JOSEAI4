@@ -16,12 +16,12 @@ interface ITreeNodeToggleDetail {
  *
  * Build is eager: a child group, once created, stays attached to the DOM for the node's lifetime.
  * Collapsing does not detach it — `<checkbox-tree>`'s stylesheet hides a collapsed group with
- * `tree-node[aria-expanded="false"] > .tree-node__group { display: none }`, keeping the tree
- * synchronous (no retain/rebuild bookkeeping) at the scale this widget targets (≤ ~100 nodes).
+ * `checkbox-tree-node[aria-expanded="false"] > .tree-node__group { display: none }`, keeping the
+ * tree synchronous (no retain/rebuild bookkeeping) at the scale this widget targets (≤ ~100 nodes).
  */
 class TreeNodeElement extends HTMLElement {
-  /** Custom element tag name. */
-  static readonly tagName = 'tree-node';
+  /** Custom element tag name. `checkbox-tree-node`, not `tree-node` — the library's other tree widget (`src/lib/widgets/tree/`) already owns that tag in the global custom element registry. */
+  static readonly tagName = 'checkbox-tree-node';
 
   /** DOM event this element dispatches. Fires (bubbling) after every expand/collapse. */
   static readonly events = {
@@ -43,6 +43,11 @@ class TreeNodeElement extends HTMLElement {
   /** Whether the node is a leaf (no children). Controlled by the container via {@link setLeaf}. */
   get isLeaf(): boolean {
     return this.#leaf;
+  }
+
+  /** Checkbox placement for this row, stamped by the container via `data-type`. Defaults to `'label'` if never set. */
+  get type(): 'checkbox' | 'label' {
+    return this.dataset.type === 'checkbox' ? 'checkbox' : 'label';
   }
 
   /** Number of child nodes currently appended into this node's group. */
@@ -155,7 +160,7 @@ if (!customElements.get(TreeNodeElement.tagName)) {
   customElements.define(TreeNodeElement.tagName, TreeNodeElement);
 }
 
-/** Creates and configures a `<tree-node>` in one step — the primitive all tree composition builds on. */
+/** Creates and configures a `<checkbox-tree-node>` in one step — the primitive all tree composition builds on. */
 function createTreeNode(label: string): TreeNodeElement {
   const el = document.createElement(TreeNodeElement.tagName) as TreeNodeElement;
   el.configure(label);

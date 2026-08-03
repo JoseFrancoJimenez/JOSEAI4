@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { CheckboxTreeElement } from './checkbox-tree.ts';
-import type { ITreeDef, Checkable } from './checkbox-tree.ts';
+import type { ITreeDef } from './checkbox-tree.ts';
 import { TreeNodeElement } from './tree-node.ts';
 
 interface IDef extends ITreeDef {
@@ -27,6 +27,11 @@ function sampleDefs(): IDef[] {
   ];
 }
 
+/** Same shape as {@link sampleDefs}, but every node placed with a checkbox — the baseline most toggle/mutation tests build on. */
+function checkableDefs(): IDef[] {
+  return sampleDefs().map((def) => ({ ...def, type: 'checkbox' }));
+}
+
 function getLabel(def: IDef): string {
   return def.id;
 }
@@ -49,8 +54,8 @@ function fireKey(el: Element, key: string): void {
   el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
 }
 
-function checkboxSpan(node: TreeNodeElement): HTMLElement {
-  return node.rowEl.querySelector<HTMLElement>(':scope > .tree-node__checkbox')!;
+function checkboxSpan(node: TreeNodeElement): HTMLElement | null {
+  return node.rowEl.querySelector<HTMLElement>(':scope > .tree-node__checkbox');
 }
 
 afterEach(() => {
@@ -151,12 +156,21 @@ describe('CheckboxTreeElement — label wiring', () => {
   });
 });
 
-describe("CheckboxTreeElement — checkable: 'all' (default)", () => {
-  it('every node gets a checkbox span + aria-checked=false', () => {
+describe('CheckboxTreeElement — checkbox placement (type), default', () => {
+  it('a def with no type renders no checkbox anywhere (default is label)', () => {
     const tree = mount();
     tree.build(sampleDefs(), getLabel);
     for (const node of allNodes(tree)) {
-      const span = node.rowEl.querySelector<HTMLElement>(':scope > .tree-node__checkbox');
+      expect(checkboxSpan(node)).toBeNull();
+      expect(node.hasAttribute('aria-checked')).toBe(false);
+    }
+  });
+
+  it("type: 'checkbox' on every def renders a checkbox span + aria-checked=false on every node, leaf and branch alike", () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel);
+    for (const node of allNodes(tree)) {
+      const span = checkboxSpan(node);
       expect(span).toBeTruthy();
       expect(span!.dataset.state).toBe('unchecked');
       expect(span!.getAttribute('aria-hidden')).toBe('true');
@@ -165,21 +179,69 @@ describe("CheckboxTreeElement — checkable: 'all' (default)", () => {
   });
 });
 
-describe("CheckboxTreeElement — checkable: 'leaves'", () => {
-  it('only leaves get a checkbox + aria-checked; groups get neither', () => {
+describe('CheckboxTreeElement — checkbox placement (type), per-node control', () => {
+  it("type: 'checkbox' on leaves only, groups left as 'label' — leaves get a box, groups get neither", () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel, { checkable: 'leaves' as Checkable });
+    const defs: IDef[] = sampleDefs().map((def) => {
+      const isLeaf = ['q1', 'q2', 'images', 'archive'].includes(def.id);
+      return isLeaf ? { ...def, type: 'checkbox' } : def;
+    });
+    tree.build(defs, getLabel);
 
     for (const leafId of ['q1', 'q2', 'images', 'archive']) {
       const node = byId(tree, leafId);
-      expect(node.rowEl.querySelector(':scope > .tree-node__checkbox')).toBeTruthy();
+      expect(checkboxSpan(node)).toBeTruthy();
       expect(node.getAttribute('aria-checked')).toBe('false');
     }
     for (const groupId of ['docs', 'reports']) {
       const node = byId(tree, groupId);
-      expect(node.rowEl.querySelector(':scope > .tree-node__checkbox')).toBeNull();
+      expect(checkboxSpan(node)).toBeNull();
       expect(node.hasAttribute('aria-checked')).toBe(false);
+      expect(node.hasAttribute('aria-expanded')).toBe(true); // still expandable
     }
+  });
+
+  it('mixed placement — checkbox and label nodes interleaved at any level (including a checkbox group) renders correctly', () => {
+    const tree = mount();
+    const defs: IDef[] = sampleDefs().map((def) => {
+      if (def.id === 'docs') return { ...def, type: 'checkbox' }; // a checkbox GROUP
+      if (def.id === 'reports') return def; // a label group, nested under a checkbox group
+      if (def.id === 'q1') return { ...def, type: 'checkbox' }; // a checkbox leaf under a label group
+      return def; // q2, images, archive stay label
+    });
+    tree.build(defs, getLabel);
+
+    expect(checkboxSpan(byId(tree, 'docs'))).toBeTruthy();
+    expect(checkboxSpan(byId(tree, 'reports'))).toBeNull();
+    expect(checkboxSpan(byId(tree, 'q1'))).toBeTruthy();
+    expect(checkboxSpan(byId(tree, 'q2'))).toBeNull();
+    expect(checkboxSpan(byId(tree, 'images'))).toBeNull();
+    expect(checkboxSpan(byId(tree, 'archive'))).toBeNull();
+  });
+});
+
+describe('CheckboxTreeElement — expanded (per-node initial state)', () => {
+  it('expanded: true on a branch builds it already expanded', () => {
+    const tree = mount();
+    const defs = sampleDefs().map((def) => (def.id === 'docs' ? { ...def, expanded: true } : def));
+    tree.build(defs, getLabel);
+    expect(byId(tree, 'docs').getAttribute('aria-expanded')).toBe('true');
+    expect(byId(tree, 'reports').getAttribute('aria-expanded')).toBe('false'); // omitted — default collapsed
+  });
+
+  it('expanded is ignored on a leaf (no aria-expanded either way)', () => {
+    const tree = mount();
+    const defs = sampleDefs().map((def) => (def.id === 'archive' ? { ...def, expanded: true } : def));
+    tree.build(defs, getLabel);
+    expect(byId(tree, 'archive').hasAttribute('aria-expanded')).toBe(false);
+  });
+
+  it('expanded: true on a deep node is literal, not inherited — it requests its own expansion but a collapsed ancestor still hides it', () => {
+    const tree = mount();
+    const defs = sampleDefs().map((def) => (def.id === 'reports' ? { ...def, expanded: true } : def));
+    tree.build(defs, getLabel);
+    expect(byId(tree, 'docs').getAttribute('aria-expanded')).toBe('false'); // ancestor: default collapsed
+    expect(byId(tree, 'reports').getAttribute('aria-expanded')).toBe('true'); // its own literal request
   });
 });
 
@@ -300,9 +362,9 @@ describe('CheckboxTreeElement — keyboard: Right/Left', () => {
 });
 
 describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)', () => {
-  it('a leaf flips aria-checked and emits checkbox-tree:change with the new checkedLeafIds', () => {
+  it('a checkbox leaf flips aria-checked and emits checkbox-tree:change with the new checkedLeafIds', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const archive = byId(tree, 'archive');
     let detail: { checkedLeafIds: string[]; nodeId: string; checked: boolean } | null = null;
     tree.addEventListener(CheckboxTreeElement.events.change, (ev) => {
@@ -311,13 +373,13 @@ describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)',
     archive.focus();
     fireKey(archive, ' ');
     expect(archive.getAttribute('aria-checked')).toBe('true');
-    expect(checkboxSpan(archive).dataset.state).toBe('checked');
+    expect(checkboxSpan(archive)!.dataset.state).toBe('checked');
     expect(detail).toEqual({ checkedLeafIds: ['archive'], nodeId: 'archive', checked: true });
   });
 
-  it("a group in 'all' mode cascades to all descendant leaves and updates its own aria-checked", () => {
+  it('a checkbox group cascades to all descendant leaves and updates its own aria-checked', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const reports = byId(tree, 'reports');
     reports.focus();
     fireKey(reports, 'Enter');
@@ -327,12 +389,18 @@ describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)',
     expect(byId(tree, 'q2').getAttribute('aria-checked')).toBe('true');
   });
 
-  it("a group in 'leaves' mode expands and emits nothing", () => {
+  it("a type: 'label' leaf is a no-op; a type: 'label' group expands instead, and neither emits", () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel, { checkable: 'leaves' as Checkable });
+    tree.build(sampleDefs(), getLabel); // every node defaults to 'label'
     const docs = byId(tree, 'docs');
+    const archive = byId(tree, 'archive');
     let fired = false;
     tree.addEventListener(CheckboxTreeElement.events.change, () => { fired = true; });
+
+    archive.focus();
+    fireKey(archive, ' ');
+    expect(archive.hasAttribute('aria-checked')).toBe(false);
+
     docs.focus();
     fireKey(docs, ' ');
     expect(docs.expanded).toBe(true);
@@ -343,15 +411,15 @@ describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)',
 describe('CheckboxTreeElement — click', () => {
   it('clicking the checkbox behaves like Space', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const archive = byId(tree, 'archive');
-    checkboxSpan(archive).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    checkboxSpan(archive)!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(archive.getAttribute('aria-checked')).toBe('true');
   });
 
   it('clicking the content toggles expand/collapse, not checked', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const docs = byId(tree, 'docs');
     docs.contentEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(docs.expanded).toBe(true);
@@ -362,7 +430,7 @@ describe('CheckboxTreeElement — click', () => {
 describe('CheckboxTreeElement — tri-state reflection', () => {
   it('checking every child flips the parent (and ancestors) to checked; unchecking one flips it to mixed', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const reports = byId(tree, 'reports');
     const q1 = byId(tree, 'q1');
     const q2 = byId(tree, 'q2');
@@ -371,12 +439,12 @@ describe('CheckboxTreeElement — tri-state reflection', () => {
     q1.focus(); fireKey(q1, ' ');
     q2.focus(); fireKey(q2, ' ');
     expect(reports.getAttribute('aria-checked')).toBe('true');
-    expect(checkboxSpan(reports).dataset.state).toBe('checked');
+    expect(checkboxSpan(reports)!.dataset.state).toBe('checked');
     expect(docs.getAttribute('aria-checked')).toBe('mixed'); // images still unchecked
 
     q1.focus(); fireKey(q1, ' '); // uncheck q1
     expect(reports.getAttribute('aria-checked')).toBe('mixed');
-    expect(checkboxSpan(reports).dataset.state).toBe('mixed');
+    expect(checkboxSpan(reports)!.dataset.state).toBe('mixed');
     expect(docs.getAttribute('aria-checked')).toBe('mixed');
   });
 });
@@ -384,7 +452,7 @@ describe('CheckboxTreeElement — tri-state reflection', () => {
 describe('CheckboxTreeElement — setChecked / getChecked (uncontrolled contract)', () => {
   it('setChecked reflects checked/mixed visuals and does not emit', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     let fired = false;
     tree.addEventListener(CheckboxTreeElement.events.change, () => { fired = true; });
 
@@ -397,7 +465,7 @@ describe('CheckboxTreeElement — setChecked / getChecked (uncontrolled contract
 
   it('getChecked returns the current set', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     tree.setChecked(['q1', 'archive']);
     expect(tree.getChecked().sort()).toEqual(['archive', 'q1']);
   });
@@ -406,7 +474,7 @@ describe('CheckboxTreeElement — setChecked / getChecked (uncontrolled contract
 describe('CheckboxTreeElement — interactiveSelector guard', () => {
   it('keys are suppressed when focus is inside injected interactive content', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const archive = byId(tree, 'archive');
     const link = document.createElement('a');
     link.href = '#';
@@ -421,7 +489,7 @@ describe('CheckboxTreeElement — interactiveSelector guard', () => {
 describe('CheckboxTreeElement — roving tab stop stays singular', () => {
   it('keeps exactly one tabindex=0 after navigation and toggling', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const docs = byId(tree, 'docs');
     docs.focus();
     fireKey(docs, 'ArrowRight');
@@ -435,7 +503,7 @@ describe('CheckboxTreeElement — roving tab stop stays singular', () => {
 describe('CheckboxTreeElement — toggling is surgical', () => {
   it('nodes outside the affected subtree/ancestors are untouched', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const reports = byId(tree, 'reports');
     reports.focus();
     fireKey(reports, ' ');
@@ -457,20 +525,18 @@ describe('CheckboxTreeElement — add', () => {
     expect(byId(tree, 'photo1')).toBeTruthy();
   });
 
-  it("in 'leaves' mode, a leaf becoming a branch loses its checkbox", () => {
+  it("the added node's own type decides its checkbox, independent of its parent's placement", () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel, { checkable: 'leaves' as Checkable });
-    const images = byId(tree, 'images');
-    expect(checkboxSpan(images)).toBeTruthy();
-
-    tree.add({ id: 'photo1', parent_id: 'images' }, images);
-    expect(images.rowEl.querySelector(':scope > .tree-node__checkbox')).toBeNull();
-    expect(images.hasAttribute('aria-checked')).toBe(false);
+    tree.build(sampleDefs(), getLabel); // every existing node is 'label'
+    tree.add({ id: 'photo1', parent_id: 'images', type: 'checkbox' }, 'images');
+    const photo1 = byId(tree, 'photo1');
+    expect(checkboxSpan(photo1)).toBeTruthy();
+    expect(photo1.getAttribute('aria-checked')).toBe('false');
   });
 
   it('adding an unchecked leaf into a fully-checked group flips that group (and its ancestors) to mixed', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const reports = byId(tree, 'reports');
     const docs = byId(tree, 'docs');
     tree.setChecked(['q1', 'q2', 'images']); // every leaf under docs checked
@@ -511,20 +577,9 @@ describe('CheckboxTreeElement — removeNode', () => {
     expect(reports.hasAttribute('aria-expanded')).toBe(false);
   });
 
-  it("in 'leaves' mode, a branch emptied back to a leaf regains a checkbox", () => {
-    const tree = mount();
-    tree.build(sampleDefs(), getLabel, { checkable: 'leaves' as Checkable });
-    tree.removeNode('q1');
-    tree.removeNode('q2');
-    const reports = byId(tree, 'reports');
-    expect(reports.isLeaf).toBe(true);
-    expect(checkboxSpan(reports)).toBeTruthy();
-    expect(reports.getAttribute('aria-checked')).toBe('false');
-  });
-
   it('removing an unchecked leaf from a mixed group can flip it to checked', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     tree.setChecked(['q1']); // reports is mixed (q2 unchecked)
     const reports = byId(tree, 'reports');
     expect(reports.getAttribute('aria-checked')).toBe('mixed');
@@ -535,7 +590,7 @@ describe('CheckboxTreeElement — removeNode', () => {
 
   it('drops the removed leaves from getChecked, whether removed directly or as part of a subtree', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     tree.setChecked(['q1', 'q2', 'archive']);
 
     tree.removeNode('reports'); // removes the q1/q2 subtree
@@ -564,7 +619,7 @@ describe('CheckboxTreeElement — move', () => {
 
   it('keeps its checked leaves after a move', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     tree.setChecked(['q1']);
     tree.move('reports', null);
     expect(tree.getChecked()).toEqual(['q1']);
@@ -573,7 +628,7 @@ describe('CheckboxTreeElement — move', () => {
 
   it("updates both the old and new parents' group states", () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     tree.setChecked(['q1', 'q2']); // reports fully checked; docs mixed (images unchecked)
     const docs = byId(tree, 'docs');
     expect(docs.getAttribute('aria-checked')).toBe('mixed');
@@ -619,7 +674,7 @@ describe('CheckboxTreeElement — move edge cases', () => {
 
   it('mutation is surgical — nodes outside the affected region keep their identity and state', () => {
     const tree = mount();
-    tree.build(sampleDefs(), getLabel);
+    tree.build(checkableDefs(), getLabel);
     const archive = byId(tree, 'archive');
     const archiveCheckbox = checkboxSpan(archive);
 
