@@ -362,11 +362,11 @@ describe('CheckboxTreeElement — keyboard: Right/Left', () => {
 });
 
 describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)', () => {
-  it('a checkbox leaf flips aria-checked and emits checkbox-tree:change with the new checkedLeafIds', () => {
+  it('a checkbox leaf flips aria-checked and emits checkbox-tree:change with the new checkedIds', () => {
     const tree = mount();
     tree.build(checkableDefs(), getLabel);
     const archive = byId(tree, 'archive');
-    let detail: { checkedLeafIds: string[]; nodeId: string; checked: boolean } | null = null;
+    let detail: { checkedIds: string[]; nodeId: string; checked: boolean } | null = null;
     tree.addEventListener(CheckboxTreeElement.events.change, (ev) => {
       detail = (ev as CustomEvent<typeof detail>).detail;
     });
@@ -374,10 +374,10 @@ describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)',
     fireKey(archive, ' ');
     expect(archive.getAttribute('aria-checked')).toBe('true');
     expect(checkboxSpan(archive)!.dataset.state).toBe('checked');
-    expect(detail).toEqual({ checkedLeafIds: ['archive'], nodeId: 'archive', checked: true });
+    expect(detail).toEqual({ checkedIds: ['archive'], nodeId: 'archive', checked: true });
   });
 
-  it('a checkbox group cascades to all descendant leaves and updates its own aria-checked', () => {
+  it("a checkbox group in (default) 'cascade' mode cascades to all descendant checkbox-leaves and updates its own aria-checked", () => {
     const tree = mount();
     tree.build(checkableDefs(), getLabel);
     const reports = byId(tree, 'reports');
@@ -389,6 +389,22 @@ describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)',
     expect(byId(tree, 'q2').getAttribute('aria-checked')).toBe('true');
   });
 
+  it("cascade aggregation ignores 'label' descendants — a checkbox group with one checkbox-leaf and one label-leaf reads 'checked', not 'mixed', once the checkbox-leaf is checked", () => {
+    const tree = mount();
+    const defs: IDef[] = sampleDefs().map((def) => {
+      if (def.id === 'reports') return { ...def, type: 'checkbox' };
+      if (def.id === 'q1') return { ...def, type: 'checkbox' };
+      return def; // q2 stays label — irrelevant to aggregation
+    });
+    tree.build(defs, getLabel);
+    const q1 = byId(tree, 'q1');
+    q1.focus();
+    fireKey(q1, ' ');
+    expect(byId(tree, 'reports').getAttribute('aria-checked')).toBe('true');
+  });
+});
+
+describe('CheckboxTreeElement — Enter/Space on a label node', () => {
   it("a type: 'label' leaf is a no-op; a type: 'label' group expands instead, and neither emits", () => {
     const tree = mount();
     tree.build(sampleDefs(), getLabel); // every node defaults to 'label'
@@ -404,6 +420,46 @@ describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)',
     docs.focus();
     fireKey(docs, ' ');
     expect(docs.expanded).toBe(true);
+    expect(fired).toBe(false);
+  });
+});
+
+describe("CheckboxTreeElement — checkable: 'self'", () => {
+  it('toggling a checkbox group flips only its own box — descendants and ancestors are untouched, and mixed never appears', () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel, { checkable: 'self' });
+    const reports = byId(tree, 'reports');
+    reports.focus();
+    fireKey(reports, ' ');
+
+    expect(reports.getAttribute('aria-checked')).toBe('true');
+    expect(byId(tree, 'q1').getAttribute('aria-checked')).toBe('false');
+    expect(byId(tree, 'q2').getAttribute('aria-checked')).toBe('false');
+    expect(byId(tree, 'docs').getAttribute('aria-checked')).toBe('false'); // ancestor untouched
+    expect(tree.getChecked()).toContain('reports');
+  });
+
+  it('checking every descendant checkbox-leaf does not flip an ancestor self-group — no aggregation happens', () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel, { checkable: 'self' });
+    const q1 = byId(tree, 'q1');
+    const q2 = byId(tree, 'q2');
+    q1.focus(); fireKey(q1, ' ');
+    q2.focus(); fireKey(q2, ' ');
+    expect(byId(tree, 'reports').getAttribute('aria-checked')).toBe('false');
+    expect(byId(tree, 'docs').getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('getChecked includes a checked self-group id; setChecked reflects it without emitting', () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel, { checkable: 'self' });
+    let fired = false;
+    tree.addEventListener(CheckboxTreeElement.events.change, () => { fired = true; });
+
+    tree.setChecked(['reports']);
+    expect(byId(tree, 'reports').getAttribute('aria-checked')).toBe('true');
+    expect(byId(tree, 'docs').getAttribute('aria-checked')).toBe('false');
+    expect(tree.getChecked()).toEqual(['reports']);
     expect(fired).toBe(false);
   });
 });
@@ -534,19 +590,6 @@ describe('CheckboxTreeElement — add', () => {
     expect(photo1.getAttribute('aria-checked')).toBe('false');
   });
 
-  it('adding an unchecked leaf into a fully-checked group flips that group (and its ancestors) to mixed', () => {
-    const tree = mount();
-    tree.build(checkableDefs(), getLabel);
-    const reports = byId(tree, 'reports');
-    const docs = byId(tree, 'docs');
-    tree.setChecked(['q1', 'q2', 'images']); // every leaf under docs checked
-    expect(docs.getAttribute('aria-checked')).toBe('true');
-
-    tree.add({ id: 'q3', parent_id: 'reports' }, reports);
-    expect(reports.getAttribute('aria-checked')).toBe('mixed');
-    expect(docs.getAttribute('aria-checked')).toBe('mixed');
-  });
-
   it('supports a root-level add (parent omitted/null)', () => {
     const tree = mount();
     tree.build(sampleDefs(), getLabel);
@@ -562,6 +605,31 @@ describe('CheckboxTreeElement — add', () => {
     tree.add({ id: 'photo1', parent_id: 'images' }, 'images');
     expect(byId(tree, 'photo1')).toBeTruthy();
     expect(byId(tree, 'images').isLeaf).toBe(false);
+  });
+});
+
+describe('CheckboxTreeElement — add, cascade aggregation', () => {
+  it('adding an unchecked checkbox-leaf into a fully-checked group flips that group (and its ancestors) to mixed', () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel);
+    const reports = byId(tree, 'reports');
+    const docs = byId(tree, 'docs');
+    tree.setChecked(['q1', 'q2', 'images']); // every leaf under docs checked
+    expect(docs.getAttribute('aria-checked')).toBe('true');
+
+    tree.add({ id: 'q3', parent_id: 'reports', type: 'checkbox' }, reports);
+    expect(reports.getAttribute('aria-checked')).toBe('mixed');
+    expect(docs.getAttribute('aria-checked')).toBe('mixed');
+  });
+
+  it('adding a type: "label" leaf into a fully-checked cascade group does not affect its aggregate', () => {
+    const tree = mount();
+    tree.build(checkableDefs(), getLabel);
+    const reports = byId(tree, 'reports');
+    tree.setChecked(['q1', 'q2', 'images']);
+
+    tree.add({ id: 'q3', parent_id: 'reports' }, reports); // default type: 'label'
+    expect(reports.getAttribute('aria-checked')).toBe('true');
   });
 });
 

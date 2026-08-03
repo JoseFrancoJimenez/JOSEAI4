@@ -4,9 +4,11 @@ type CheckedState = 'checked' | 'unchecked' | 'mixed';
 /**
  * Pure checked-state model for the checkbox tree — **no DOM, no structure**.
  *
- * Holds only checked *leaf* ids. A group's state is never stored: the widget enumerates a
- * group's descendant leaf ids by walking the DOM and asks {@link aggregate} to derive it on
- * demand, so it can never drift from the leaves that are actually checked.
+ * Holds ids that store their own boolean: checkbox-leaves always, plus checkbox-**groups** too in
+ * `'self'` mode. A `'cascade'` group's state is never stored: the widget enumerates its descendant
+ * checkbox-leaf ids by walking the DOM and asks {@link aggregate} to derive it on demand, so it can
+ * never drift from the leaves that are actually checked. The model itself doesn't know or care
+ * which policy is in effect — it just holds whatever ids the widget tells it to.
  */
 class CheckboxModel {
   #checked = new Set<string>();
@@ -31,8 +33,11 @@ class CheckboxModel {
     return 'checked';
   }
 
-  /** Flips `id`'s checked state. Returns the new value. */
-  toggleLeaf(id: string): { checked: boolean } {
+  /**
+   * Flips `id`'s checked state. Returns the new value. Used for any single stored id — a
+   * checkbox-leaf in either policy, or a checkbox-group's own boolean in `'self'` mode.
+   */
+  toggleOne(id: string): { checked: boolean } {
     const checked = !this.#checked.has(id);
     if (checked) this.#checked.add(id);
     else this.#checked.delete(id);

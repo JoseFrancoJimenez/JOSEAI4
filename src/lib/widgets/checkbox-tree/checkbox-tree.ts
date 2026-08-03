@@ -30,9 +30,14 @@ interface IBuildOptions {
   checkable?: Checkable;
 }
 
-/** `detail` payload of the {@link CheckboxTreeElement.events.change} event — fired only on a user gesture. */
+/**
+ * `detail` payload of the {@link CheckboxTreeElement.events.change} event — fired only on a user
+ * gesture. `checkedIds` is the full checked set after the toggle: checkbox-leaf ids in `'cascade'`
+ * mode, plus checked checkbox-**group** ids too in `'self'` mode (a group has no authoritative
+ * state to store in `'cascade'` mode, so it's never a member there).
+ */
 interface ICheckboxTreeChangeDetail {
-  checkedLeafIds: string[];
+  checkedIds: string[];
   nodeId: string;
   checked: boolean;
 }
@@ -137,12 +142,18 @@ class CheckboxTreeElement extends HTMLElement {
     this.#setTabStop(this.#firstVisibleRow());
   }
 
-  /** Current checked leaf ids. */
+  /**
+   * Current checked ids: checkbox-leaf ids in `'cascade'` mode; checkbox-leaf **and** checked
+   * checkbox-group ids in `'self'` mode (a `'cascade'` group has no stored state of its own).
+   */
   getChecked(): string[] {
     return this.#model.getChecked();
   }
 
-  /** Replaces the checked set and reflects every rendered row. Does **not** emit — the caller already knows. */
+  /**
+   * Replaces the checked set and reflects every rendered row. Does **not** emit — the caller
+   * already knows. Accepts the same id set {@link getChecked} returns (self-mode group ids included).
+   */
   setChecked(ids: Iterable<string>): void {
     this.#model.setChecked(ids);
     for (const node of this.querySelectorAll<TreeNodeElement>(TreeNodeElement.tagName)) {
@@ -192,9 +203,12 @@ class CheckboxTreeElement extends HTMLElement {
   }
 
   /**
-   * Detaches `node` and its subtree, forgetting any of its checked leaves. If that empties its
-   * parent, the parent flips back to a leaf. Surgical: only the former parent's sibling group and
-   * ancestors are re-stamped/reflected.
+   * Detaches `node` and its subtree, forgetting any of its checked checkbox-leaves. If that empties
+   * its parent, the parent flips back to a leaf. Surgical: only the former parent's sibling group
+   * and ancestors are re-stamped/reflected (only in `'cascade'` mode — see {@link #reflectAncestors}).
+   *
+   * TODO(M3): in `'self'` mode, checkbox-**groups** inside the removed subtree also store their own
+   * boolean and should be forgotten too; today only checkbox-leaves are.
    */
   removeNode(node: TreeNodeElement | string): void {
     const target = this.#resolve(node);
@@ -202,7 +216,7 @@ class CheckboxTreeElement extends HTMLElement {
 
     const leafIds = target.isLeaf
       ? (target.dataset.id !== undefined ? [target.dataset.id] : [])
-      : this.#descendantLeafIds(target);
+      : this.#descendantCheckboxLeafIds(target);
     this.#model.forget(leafIds);
 
     const parent = this.#parentRow(target);
@@ -331,13 +345,12 @@ class CheckboxTreeElement extends HTMLElement {
   }
 
   /**
-   * The primary action on `node`: toggles checked state (leaf flips itself; group cascades to its
-   * descendant leaves), reflects the affected subtree and ancestors, and emits
-   * {@link events.change}. A `type: 'label'` node has no checkbox, so its primary action is
-   * expand/collapse instead (a no-op on a label leaf) — and nothing is emitted.
-   *
-   * TODO(M2): this still applies cascade semantics unconditionally to every checkbox node; the
-   * `checkable: 'self'` branch (own-boolean, no aggregation/ancestors) lands in Task M2.
+   * The primary action on `node`. A `type: 'label'` node has no checkbox, so its primary action is
+   * expand/collapse instead (a no-op on a label leaf) — nothing is emitted. A `type: 'checkbox'`
+   * node always flips its own stored boolean; what else happens depends on {@link #checkable}:
+   * cascading to descendant checkbox-leaves and reflecting ancestors happens only for a `'cascade'`
+   * group, and only `'cascade'` reflects ancestors at all — `'self'` reflects just the node itself.
+   * Emits {@link events.change} with the resulting `checkedIds`.
    */
   #togglePrimary(node: TreeNodeElement): void {
     if (!this.#isCheckbox(node)) {
@@ -345,34 +358,39 @@ class CheckboxTreeElement extends HTMLElement {
       return;
     }
     const id = node.dataset.id!;
-    const { checked } = node.isLeaf
-      ? this.#model.toggleLeaf(id)
-      : this.#model.toggleGroup(this.#descendantLeafIds(node));
-    this.#reflectSubtree(node);
-    this.#reflectAncestors(node);
+    const cascadeGroup = this.#checkable === 'cascade' && !node.isLeaf;
+    const { checked } = cascadeGroup
+      ? this.#model.toggleGroup(this.#descendantCheckboxLeafIds(node))
+      : this.#model.toggleOne(id);
+
+    if (cascadeGroup) this.#reflectSubtree(node);
+    else this.#reflectState(node);
+    if (this.#checkable === 'cascade') this.#reflectAncestors(node);
+
     this.dispatchEvent(new CustomEvent<ICheckboxTreeChangeDetail>(CheckboxTreeElement.events.change, {
-      detail: { checkedLeafIds: this.#model.getChecked(), nodeId: id, checked },
+      detail: { checkedIds: this.#model.getChecked(), nodeId: id, checked },
       bubbles: true,
     }));
   }
 
   /**
-   * Reflects `node`'s checkbox visual + `aria-checked` from the model. A leaf reads its own checked
-   * state; a group aggregates over {@link #descendantLeafIds}. No-op if `node` has no checkbox
-   * (a `type: 'label'` node).
+   * Reflects `node`'s checkbox visual + `aria-checked` from the model. No-op if `node` has no
+   * checkbox (a `type: 'label'` node). A leaf, or any node in `'self'` mode, reads its own stored
+   * boolean (`true`/`false` only). A `'cascade'` group aggregates over
+   * {@link #descendantCheckboxLeafIds} instead, which can yield `mixed`.
    */
   #reflectState(node: TreeNodeElement): void {
     const span = node.rowEl.querySelector<HTMLElement>(`:scope > .${treeCss.checkbox}`);
     if (!span) return;
     const id = node.dataset.id!;
-    const state: CheckedState = node.isLeaf
+    const state: CheckedState = node.isLeaf || this.#checkable === 'self'
       ? (this.#model.isChecked(id) ? 'checked' : 'unchecked')
-      : this.#model.aggregate(this.#descendantLeafIds(node));
+      : this.#model.aggregate(this.#descendantCheckboxLeafIds(node));
     span.dataset.state = state;
     node.setAttribute('aria-checked', ariaCheckedValue(state));
   }
 
-  /** Reflects `node` and every descendant row — the surgical scope after a group's checked state changes. */
+  /** Reflects `node` and every descendant row — the surgical scope after a cascade group's checked state changes. */
   #reflectSubtree(node: TreeNodeElement): void {
     this.#reflectState(node);
     const group = node.querySelector<HTMLElement>(`:scope > .${treeCss.group}`);
@@ -380,18 +398,27 @@ class CheckboxTreeElement extends HTMLElement {
     for (const el of group.querySelectorAll<TreeNodeElement>(TreeNodeElement.tagName)) this.#reflectState(el);
   }
 
-  /** Reflects every enclosing ancestor of `node` — the surgical scope for a cascade's upward effect. */
+  /**
+   * Reflects every enclosing ancestor of `node` — the surgical scope for a cascade's upward effect.
+   * No-op in `'self'` mode: a self group's state never depends on its descendants, so its ancestors
+   * (also self groups) never need recomputing.
+   */
   #reflectAncestors(node: TreeNodeElement): void {
+    if (this.#checkable === 'self') return;
     for (const ancestor of this.#enclosingNodes(node)) this.#reflectState(ancestor);
   }
 
-  /** Leaf `data-id`s under `node` (any depth), found by a scoped walk of its group. `[]` for a leaf. */
-  #descendantLeafIds(node: TreeNodeElement): string[] {
+  /**
+   * `data-id`s of **checkbox-leaves** under `node` (any depth) — descendants that are both leaves
+   * and `type: 'checkbox'`. Walks through/past `label` nodes and intermediate checkbox-groups, which
+   * derive rather than store. `[]` for a leaf. Used only by cascade aggregation/cascade.
+   */
+  #descendantCheckboxLeafIds(node: TreeNodeElement): string[] {
     const group = node.querySelector<HTMLElement>(`:scope > .${treeCss.group}`);
     if (!group) return [];
     const ids: string[] = [];
     for (const el of group.querySelectorAll<TreeNodeElement>(TreeNodeElement.tagName)) {
-      if (el.isLeaf && el.dataset.id !== undefined) ids.push(el.dataset.id);
+      if (el.isLeaf && this.#isCheckbox(el) && el.dataset.id !== undefined) ids.push(el.dataset.id);
     }
     return ids;
   }

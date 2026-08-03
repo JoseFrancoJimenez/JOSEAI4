@@ -35,12 +35,12 @@ describe('CheckboxModel — isChecked', () => {
   });
 });
 
-describe('CheckboxModel — toggleLeaf', () => {
-  it('flips the leaf and returns the new value', () => {
+describe('CheckboxModel — toggleOne', () => {
+  it('flips a single stored id and returns the new value', () => {
     const model = new CheckboxModel();
-    expect(model.toggleLeaf('a')).toEqual({ checked: true });
+    expect(model.toggleOne('a')).toEqual({ checked: true });
     expect(model.isChecked('a')).toBe(true);
-    expect(model.toggleLeaf('a')).toEqual({ checked: false });
+    expect(model.toggleOne('a')).toEqual({ checked: false });
     expect(model.isChecked('a')).toBe(false);
   });
 });
