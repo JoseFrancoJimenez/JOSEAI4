@@ -45,6 +45,14 @@ function allNodes(tree: CheckboxTreeElement): TreeNodeElement[] {
   return [...tree.querySelectorAll<TreeNodeElement>(TreeNodeElement.tagName)];
 }
 
+function fireKey(el: Element, key: string): void {
+  el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+}
+
+function checkboxSpan(node: TreeNodeElement): HTMLElement {
+  return node.rowEl.querySelector<HTMLElement>(':scope > .tree-node__checkbox')!;
+}
+
 afterEach(() => {
   document.body.replaceChildren();
 });
@@ -201,5 +209,237 @@ describe('CheckboxTreeElement — expandAll / collapseAll', () => {
     tree.collapseAll();
     expect(byId(tree, 'docs').getAttribute('aria-expanded')).toBe('false');
     expect(byId(tree, 'reports').getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('CheckboxTreeElement — keyboard: Up/Down navigation', () => {
+  it('moves through visible rows only, skipping rows under a collapsed ancestor, and clamps at both ends', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const docs = byId(tree, 'docs');
+    docs.expand(); // reports stays collapsed — q1/q2 are not visible
+
+    docs.focus();
+    fireKey(docs, 'ArrowDown');
+    expect(document.activeElement).toBe(byId(tree, 'reports'));
+
+    fireKey(byId(tree, 'reports'), 'ArrowDown');
+    expect(document.activeElement).toBe(byId(tree, 'images')); // q1/q2 skipped
+
+    fireKey(byId(tree, 'images'), 'ArrowDown');
+    expect(document.activeElement).toBe(byId(tree, 'archive'));
+
+    fireKey(byId(tree, 'archive'), 'ArrowDown'); // clamp — last row
+    expect(document.activeElement).toBe(byId(tree, 'archive'));
+
+    fireKey(byId(tree, 'archive'), 'ArrowUp');
+    expect(document.activeElement).toBe(byId(tree, 'images'));
+
+    fireKey(byId(tree, 'images'), 'ArrowUp');
+    expect(document.activeElement).toBe(byId(tree, 'reports'));
+
+    fireKey(byId(tree, 'reports'), 'ArrowUp');
+    expect(document.activeElement).toBe(docs);
+
+    fireKey(docs, 'ArrowUp'); // clamp — first row
+    expect(document.activeElement).toBe(docs);
+  });
+});
+
+describe('CheckboxTreeElement — keyboard: Home/End', () => {
+  it('Home focuses the first row, End focuses the last visible row', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const archive = byId(tree, 'archive');
+    archive.focus();
+    fireKey(archive, 'Home');
+    expect(document.activeElement).toBe(byId(tree, 'docs'));
+    fireKey(byId(tree, 'docs'), 'End');
+    expect(document.activeElement).toBe(archive);
+  });
+});
+
+describe('CheckboxTreeElement — keyboard: Right/Left', () => {
+  it('Right expands a collapsed branch (focus stays), then descends on the next Right; no-op on a leaf', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const docs = byId(tree, 'docs');
+    docs.focus();
+    fireKey(docs, 'ArrowRight');
+    expect(docs.expanded).toBe(true);
+    expect(document.activeElement).toBe(docs);
+
+    fireKey(docs, 'ArrowRight');
+    expect(document.activeElement).toBe(byId(tree, 'reports'));
+
+    const images = byId(tree, 'images');
+    images.focus();
+    fireKey(images, 'ArrowRight');
+    expect(document.activeElement).toBe(images);
+    expect(images.hasAttribute('aria-expanded')).toBe(false);
+  });
+
+  it('Left collapses an expanded branch (focus stays), then ascends on the next Left; no-op at a root', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const docs = byId(tree, 'docs');
+    docs.expand();
+    const reports = byId(tree, 'reports');
+    reports.focus();
+
+    fireKey(reports, 'ArrowLeft'); // reports collapsed — ascend
+    expect(document.activeElement).toBe(docs);
+
+    fireKey(docs, 'ArrowLeft'); // docs expanded — collapse, focus stays
+    expect(docs.expanded).toBe(false);
+    expect(document.activeElement).toBe(docs);
+
+    fireKey(docs, 'ArrowLeft'); // root, no parent — no-op
+    expect(document.activeElement).toBe(docs);
+  });
+});
+
+describe('CheckboxTreeElement — Enter/Space toggles checked (primary action)', () => {
+  it('a leaf flips aria-checked and emits checkbox-tree:change with the new checkedLeafIds', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const archive = byId(tree, 'archive');
+    let detail: { checkedLeafIds: string[]; nodeId: string; checked: boolean } | null = null;
+    tree.addEventListener(CheckboxTreeElement.events.change, (ev) => {
+      detail = (ev as CustomEvent<typeof detail>).detail;
+    });
+    archive.focus();
+    fireKey(archive, ' ');
+    expect(archive.getAttribute('aria-checked')).toBe('true');
+    expect(checkboxSpan(archive).dataset.state).toBe('checked');
+    expect(detail).toEqual({ checkedLeafIds: ['archive'], nodeId: 'archive', checked: true });
+  });
+
+  it("a group in 'all' mode cascades to all descendant leaves and updates its own aria-checked", () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const reports = byId(tree, 'reports');
+    reports.focus();
+    fireKey(reports, 'Enter');
+    expect(tree.getChecked().sort()).toEqual(['q1', 'q2']);
+    expect(reports.getAttribute('aria-checked')).toBe('true');
+    expect(byId(tree, 'q1').getAttribute('aria-checked')).toBe('true');
+    expect(byId(tree, 'q2').getAttribute('aria-checked')).toBe('true');
+  });
+
+  it("a group in 'leaves' mode expands and emits nothing", () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel, { checkable: 'leaves' as Checkable });
+    const docs = byId(tree, 'docs');
+    let fired = false;
+    tree.addEventListener(CheckboxTreeElement.events.change, () => { fired = true; });
+    docs.focus();
+    fireKey(docs, ' ');
+    expect(docs.expanded).toBe(true);
+    expect(fired).toBe(false);
+  });
+});
+
+describe('CheckboxTreeElement — click', () => {
+  it('clicking the checkbox behaves like Space', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const archive = byId(tree, 'archive');
+    checkboxSpan(archive).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(archive.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('clicking the content toggles expand/collapse, not checked', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const docs = byId(tree, 'docs');
+    docs.contentEl.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(docs.expanded).toBe(true);
+    expect(docs.getAttribute('aria-checked')).toBe('false');
+  });
+});
+
+describe('CheckboxTreeElement — tri-state reflection', () => {
+  it('checking every child flips the parent (and ancestors) to checked; unchecking one flips it to mixed', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const reports = byId(tree, 'reports');
+    const q1 = byId(tree, 'q1');
+    const q2 = byId(tree, 'q2');
+    const docs = byId(tree, 'docs');
+
+    q1.focus(); fireKey(q1, ' ');
+    q2.focus(); fireKey(q2, ' ');
+    expect(reports.getAttribute('aria-checked')).toBe('true');
+    expect(checkboxSpan(reports).dataset.state).toBe('checked');
+    expect(docs.getAttribute('aria-checked')).toBe('mixed'); // images still unchecked
+
+    q1.focus(); fireKey(q1, ' '); // uncheck q1
+    expect(reports.getAttribute('aria-checked')).toBe('mixed');
+    expect(checkboxSpan(reports).dataset.state).toBe('mixed');
+    expect(docs.getAttribute('aria-checked')).toBe('mixed');
+  });
+});
+
+describe('CheckboxTreeElement — setChecked / getChecked (uncontrolled contract)', () => {
+  it('setChecked reflects checked/mixed visuals and does not emit', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    let fired = false;
+    tree.addEventListener(CheckboxTreeElement.events.change, () => { fired = true; });
+
+    tree.setChecked(['q1']);
+    expect(byId(tree, 'q1').getAttribute('aria-checked')).toBe('true');
+    expect(byId(tree, 'reports').getAttribute('aria-checked')).toBe('mixed');
+    expect(byId(tree, 'docs').getAttribute('aria-checked')).toBe('mixed');
+    expect(fired).toBe(false);
+  });
+
+  it('getChecked returns the current set', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    tree.setChecked(['q1', 'archive']);
+    expect(tree.getChecked().sort()).toEqual(['archive', 'q1']);
+  });
+});
+
+describe('CheckboxTreeElement — interactiveSelector guard', () => {
+  it('keys are suppressed when focus is inside injected interactive content', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const archive = byId(tree, 'archive');
+    const link = document.createElement('a');
+    link.href = '#';
+    archive.contentEl.appendChild(link);
+
+    link.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    expect(archive.getAttribute('aria-checked')).toBe('false');
+    expect(tree.getChecked()).toEqual([]);
+  });
+});
+
+describe('CheckboxTreeElement — roving tab stop stays singular', () => {
+  it('keeps exactly one tabindex=0 after navigation and toggling', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const docs = byId(tree, 'docs');
+    docs.focus();
+    fireKey(docs, 'ArrowRight');
+    fireKey(docs, 'ArrowDown');
+    fireKey(byId(tree, 'reports'), ' ');
+
+    expect(allNodes(tree).filter((n) => n.tabIndex === 0)).toHaveLength(1);
+  });
+});
+
+describe('CheckboxTreeElement — toggling is surgical', () => {
+  it('nodes outside the affected subtree/ancestors are untouched', () => {
+    const tree = mount();
+    tree.build(sampleDefs(), getLabel);
+    const reports = byId(tree, 'reports');
+    reports.focus();
+    fireKey(reports, ' ');
+    expect(byId(tree, 'images').getAttribute('aria-checked')).toBe('false');
+    expect(byId(tree, 'archive').getAttribute('aria-checked')).toBe('false');
   });
 });
