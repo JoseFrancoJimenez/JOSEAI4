@@ -1,0 +1,95 @@
+.tree-view {
+  --tree-bg:              #1a1d23;
+  --tree-text:            #c8cdd6;
+  --tree-row-hover:       #22262f;
+  --tree-indent-line:     #2a2f3a;
+  --tree-toggle-color:    #6b7690;
+  --tree-toggle-hover:    #8b95a8;
+  --tree-toggle-hover-bg: #2e3340;
+  --tree-focus-ring:      #5b8af5;
+
+  display: block;
+  background: var(--tree-bg);
+  color: var(--tree-text);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 11.5px;
+  line-height: 1.4;
+  overflow-y: auto;
+  user-select: none;
+}
+
+/* Rows are <tree-node> custom elements. Styles work standalone (bare node) and inside a <tree-view>. */
+tree-node {
+  display: block;
+
+  /* Own row only — the `>` stops a parent's state from restyling descendant rows. */
+  & > .tree-node__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 3px 8px 3px 4px;
+    border-radius: 3px;
+    transition: background 0.1s;
+
+    &:hover {
+      background: var(--tree-row-hover, #22262f);
+    }
+
+    .tree-node__toggle {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--tree-toggle-color, #6b7690);
+      border-radius: 2px;
+      cursor: pointer;
+      transition: color 0.1s, background 0.1s;
+
+      &:hover {
+        color: var(--tree-toggle-hover, #8b95a8);
+        background: var(--tree-toggle-hover-bg, #2e3340);
+      }
+
+      .tree-node__toggle-icon {
+        width: 6px;
+        height: 10px;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+        transition: transform 0.15s ease;
+      }
+    }
+
+    .tree-node__content {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  /* Expanded: rotate this node's own toggle icon. */
+  &.is-expanded > .tree-node__row .tree-node__toggle-icon {
+    transform: rotate(90deg);
+  }
+
+  /* Branch content is clickable (toggles); leaf content is not. */
+  &:not(.is-leaf) > .tree-node__row .tree-node__content {
+    cursor: pointer;
+  }
+
+  /* Leaf: keep the toggle's layout space (rows stay aligned) but hide it from view and the a11y tree. */
+  &.is-leaf > .tree-node__row .tree-node__toggle {
+    visibility: hidden;
+  }
+
+  /* Nested child group: structural indentation with a guide line. */
+  & > .tree-node__group {
+    padding-left: 16px;
+    margin-left: 7px;
+    border-left: 1px solid var(--tree-indent-line, #2a2f3a);
+  }
+}
