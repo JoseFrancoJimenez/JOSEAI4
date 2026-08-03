@@ -57,7 +57,8 @@ None blocking. Deferred as premature: skipping re-stamp of a *retained* group on
 </tree-view>
 ```
 - `build<T extends { id: string; parent_id: string | null }>(defs: T[], renderNode: (def: T) => HTMLElement)`
-- `add(node, parent?, index?)` · `remove(node)` · `move(node, newParent, index?)` · `expandAll()` · `collapseAll()`
+- `add(node, parent?, index?)` · `removeNode(node)` · `move(node, newParent, index?)` · `expandAll()` · `collapseAll()`
+  (named `removeNode`, not `remove` — `HTMLElement` already inherits a native, argument-less `remove()` from `ChildNode`, and TypeScript rejects an incompatible override)
 
 **Usage — the common path is `build()` with a flat array; `tree-view` retains it and builds each node's direct children lazily on first expand:**
 ```ts
@@ -127,17 +128,17 @@ treeView.append(layers);     // a root
 **Tests:** Down/Up move among rendered rows in document order, clamped at both ends; Home/End jump to first/last; Right expands a collapsed branch then (when expanded) descends to first child, no-op on leaf; Left collapses an expanded branch then ascends to parent, no-op at a root; Enter/Space toggle a branch and no-op on a leaf; keys ignored (no move/toggle) when focus is in injected interactive content; clicking a row's content/toggle moves the roving stop to it (focusin) and the click still toggles; exactly one `tabindex=0` holds after every keyboard op.
 **Done when:** suite green, typecheck no new errors, lint clean. **(Met: 46/46 tests pass; no new type errors; eslint clean.)**
 
-### Task 4 — `add` / `remove` / `move` operations
+### Task 4 — `add` / `removeNode` / `move` operations ✅ DONE
 **Depends on:** Task 2 (independent of Task 3).
 **Files:** extend `tree-view.ts`, `tree-view.test.ts`.
 **Goal:** programmatic structural mutation with correct leaf/branch, ARIA, and roving outcomes.
 **Do:**
 - **Materialize-on-target helper:** if the target parent is a branch not yet expanded once (has a `#childrenByParent` entry but `childCount === 0`), build its direct children from the map first (same fill path as expand, minus attaching/expanding) so the group is complete before the new/moved node joins it.
 - `add(node, parent?, index?)`: materialize `parent`; insert `node` at `index` (append if omitted); `parent.setLeaf(false)` if it was a leaf; root when `parent` null/omitted (append to `<tree-view>`). Adding into a collapsed node does **not** expand it.
-- `remove(node)`: detach `node` + subtree; `parent.setLeaf(true)` if emptied. (Roving repair + ARIA re-stamp come from the observer.)
+- `removeNode(node)`: detach `node` + subtree; `parent.setLeaf(true)` if emptied. (Roving repair + ARIA re-stamp come from the observer.)
 - `move(node, newParent, index?)`: materialize `newParent`; re-parent via `appendChild`/`insertBefore` (root when null); old parent may become a leaf, new parent a branch (`setLeaf` both). Catch native `HierarchyRequestError` and re-throw a clear "cannot move a node into its own subtree" error, leaving the DOM unchanged.
 **Tests:** `add` first child flips leaf→branch (toggle appears, `aria-expanded="false"`); `remove` last child flips branch→leaf; `add`/`move` into a collapsed node materializes but doesn't expand, node appears on next expand; `move` into an expanded node shows it immediately with corrected `aria-level`/`aria-posinset` (incl. a moved *subtree*'s descendants re-levelling, after a tick); cycle-forming `move` throws and leaves the DOM unchanged; root-level `add`/`move` (null parent); `remove` of the active node reassigns the roving stop (after a tick); **surgical**: unaffected nodes remain the *same instances* across `add`/`remove`/`move`.
-**Done when:** suite green, typecheck no new errors, lint clean.
+**Done when:** suite green, typecheck no new errors, lint clean. **(Met: 56/56 tests pass; no new type errors; eslint clean. `remove` renamed to `removeNode` — see Shapes/API note above.)**
 
 ## Verification (every task)
 

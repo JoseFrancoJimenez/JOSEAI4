@@ -116,6 +116,45 @@ class TreeViewElement extends HTMLElement {
     }
   }
 
+  /**
+   * Inserts `node` under `parent` at `index` (appended if omitted), materializing `parent`'s recipe
+   * children first so the group is complete before `node` joins it. `parent` null/omitted inserts a root.
+   * Flips `parent` leaf→branch if it was a leaf. Does **not** expand a collapsed `parent`.
+   */
+  add(node: TreeNodeElement, parent?: TreeNodeElement | null, index?: number): void {
+    this.#insertInto(parent ?? null, node, index);
+  }
+
+  /**
+   * Detaches `node` and its subtree; flips its parent branch→leaf if now empty. ARIA + roving repair come
+   * from the observer. Named `removeNode` (not `remove`) — `remove()` is already `Element`'s native,
+   * argument-less removal method, inherited via `HTMLElement`.
+   */
+  removeNode(node: TreeNodeElement): void {
+    const parent = this.#parentRow(node);
+    node.remove();
+    if (parent && parent.childCount === 0) parent.setLeaf(true);
+  }
+
+  /**
+   * Re-parents `node` under `newParent` at `index` (root if null), materializing `newParent` first.
+   * Flips leaf/branch on both the old and new parent as needed. Re-parenting is a native `appendChild`/
+   * `insertBefore`, which throws `HierarchyRequestError` for free when `newParent` is inside `node`'s own
+   * subtree — re-thrown here as a clearer error, leaving the DOM unchanged.
+   */
+  move(node: TreeNodeElement, newParent: TreeNodeElement | null, index?: number): void {
+    const oldParent = this.#parentRow(node);
+    try {
+      this.#insertInto(newParent, node, index);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'HierarchyRequestError') {
+        throw new Error('move: cannot move a node into its own subtree');
+      }
+      throw err;
+    }
+    if (oldParent && oldParent !== newParent && oldParent.childCount === 0) oldParent.setLeaf(true);
+  }
+
   /** Applies the accessible name, forwarding a consumer-supplied `aria-label`/`aria-labelledby`, else defaulting. */
   #applyAccessibleName(): void {
     if (this.hasAttribute('aria-label') || this.hasAttribute('aria-labelledby')) return;
@@ -157,6 +196,34 @@ class TreeViewElement extends HTMLElement {
       node.appendChildNode(child);
       this.#applyInitialExpansion(child, def);
     }
+  }
+
+  /**
+   * Inserts `node` under `parent` at `index` (appended if omitted), materializing `parent`'s recipe
+   * children first so the group is complete before `node` joins it. `parent` null inserts a root, directly
+   * into `<tree-view>`. Flips `parent` leaf→branch if it was a leaf. When `parent` is collapsed its group
+   * is detached from the DOM (retained-but-invisible, per {@link TreeNodeElement}), so `index` is honored
+   * only once `parent` is attached (a root, or an expanded parent) — a collapsed parent's new child is
+   * simply appended, its order becoming observable the next time `parent` expands.
+   */
+  #insertInto(parent: TreeNodeElement | null, node: TreeNodeElement, index?: number): void {
+    if (!parent) {
+      this.#insertAmong(this, node, index);
+      return;
+    }
+    this.#fillChildren(parent);
+    const wasLeaf = parent.isLeaf;
+    const group = parent.querySelector<HTMLElement>(`:scope > .${treeCss.group}`);
+    if (group) this.#insertAmong(group, node, index);
+    else parent.appendChildNode(node);
+    if (wasLeaf) parent.setLeaf(false);
+  }
+
+  /** Inserts `node` into `container` (a group or the tree root) at `index`, or appends if omitted/out of range. */
+  #insertAmong(container: Element, node: TreeNodeElement, index?: number): void {
+    const ref = index === undefined ? undefined : this.#directNodes(container)[index];
+    if (ref) container.insertBefore(node, ref);
+    else container.appendChild(node);
   }
 
   /**

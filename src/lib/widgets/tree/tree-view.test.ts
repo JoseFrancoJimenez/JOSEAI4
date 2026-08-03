@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { TreeViewElement } from './tree-view.ts';
 import type { ITreeNodeDef } from './tree-view.ts';
-import { TreeNodeElement } from './tree-node.ts';
+import { TreeNodeElement, createTreeNode } from './tree-node.ts';
 
 /**
  * Layers (branch)
@@ -55,6 +55,13 @@ const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0
 /** Dispatches a bubbling `keydown` with `key`, as the delegated listener on `<tree-view>` expects. */
 const press = (row: HTMLElement, key: string): boolean =>
   row.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+
+/** A standalone `<tree-node>` for manual composition tests (`add`/`move`), outside the build recipe. */
+const makeNode = (label: string): TreeNodeElement => {
+  const span = document.createElement('span');
+  span.textContent = label;
+  return createTreeNode(span);
+};
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -457,6 +464,151 @@ describe('TreeViewElement — keyboard navigation: roving tab stop', () => {
       press(document.activeElement as HTMLElement, key);
       expect(tabStops(host)).toHaveLength(1);
     }
+  });
+});
+
+describe('TreeViewElement — add', () => {
+  it('adding a first child flips a leaf into a branch (toggle appears, aria-expanded=false); does not expand', () => {
+    const host = mount();
+    const basemaps = node(host, 'Basemaps')!;
+    expect(basemaps.isLeaf).toBe(true);
+
+    host.add(makeNode('Satellite'), basemaps);
+
+    expect(basemaps.isLeaf).toBe(false);
+    expect(basemaps.getAttribute('aria-expanded')).toBe('false');
+    expect(basemaps.expanded).toBe(false);
+  });
+
+  it('adding into a collapsed node materializes its recipe children without expanding it', () => {
+    const host = mount();
+    const layers = node(host, 'Layers')!;
+    const extra = makeNode('Extra');
+
+    host.add(extra, layers);
+
+    expect(layers.expanded).toBe(false);
+    expect(layers.contains(extra)).toBe(false); // group retained but still detached
+    expect(node(host, 'Roads')).toBeNull(); // not yet rendered either
+
+    layers.expand();
+    expect(layers.contains(extra)).toBe(true);
+    expect(node(host, 'Roads')).toBeTruthy();
+  });
+
+  it('root-level add (parent omitted) appends a new root', () => {
+    const host = mount();
+    const extra = makeNode('Extra');
+
+    host.add(extra);
+
+    expect(extra.parentElement).toBe(host);
+    expect([...host.children]).toContain(extra);
+  });
+});
+
+describe('TreeViewElement — removeNode', () => {
+  it('emptying a branch flips it back to a leaf', () => {
+    const host = mount();
+    host.expandAll();
+    const roads = node(host, 'Roads')!;
+
+    host.removeNode(node(host, 'Highways')!);
+    expect(roads.isLeaf).toBe(false); // Streets remains
+
+    host.removeNode(node(host, 'Streets')!);
+    expect(roads.isLeaf).toBe(true);
+    expect(roads.hasAttribute('aria-expanded')).toBe(false);
+  });
+
+  it('reassigns the roving tab stop when the active row is removed (after a tick)', async () => {
+    const host = mount();
+    expect(node(host, 'Layers')!.tabIndex).toBe(0);
+
+    host.removeNode(node(host, 'Layers')!);
+    await tick();
+
+    const stops = tabStops(host);
+    expect(stops).toHaveLength(1);
+    expect(stops[0]).toBe(node(host, 'Basemaps'));
+  });
+});
+
+describe('TreeViewElement — move', () => {
+  it('moving into a collapsed node materializes it and re-parents without expanding', () => {
+    const host = mount();
+    const layers = node(host, 'Layers')!;
+    const basemaps = node(host, 'Basemaps')!;
+
+    host.move(basemaps, layers);
+
+    expect(layers.expanded).toBe(false);
+    expect(layers.contains(basemaps)).toBe(false); // group retained but detached
+    expect([...host.children]).not.toContain(basemaps); // no longer a root
+
+    layers.expand();
+    expect(layers.contains(basemaps)).toBe(true);
+  });
+
+  it('moving a branch to the root shows it and its descendants immediately, re-levelled after a tick', async () => {
+    const host = mount();
+    host.expandAll();
+    const layers = node(host, 'Layers')!;
+    const roads = node(host, 'Roads')!;
+    const highways = node(host, 'Highways')!;
+
+    host.move(roads, null);
+
+    expect(host.contains(roads)).toBe(true); // visible immediately
+    expect(layers.contains(roads)).toBe(false);
+    expect(layers.isLeaf).toBe(false); // still has Water
+
+    await tick();
+    expect(roads.getAttribute('aria-level')).toBe('1');
+    expect(highways.getAttribute('aria-level')).toBe('2'); // descendant re-levelled with its subtree
+  });
+
+  it('moving into an already-expanded node shows it at the requested index immediately, re-stamped after a tick', async () => {
+    const host = mount();
+    host.expandAll();
+    const layers = node(host, 'Layers')!;
+    const basemaps = node(host, 'Basemaps')!;
+
+    host.move(basemaps, layers, 0);
+    expect(layers.contains(basemaps)).toBe(true);
+
+    await tick();
+    expect(basemaps.getAttribute('aria-posinset')).toBe('1');
+    expect(node(host, 'Roads')!.getAttribute('aria-posinset')).toBe('2'); // shifted by the new first child
+  });
+
+  it('a cycle-forming move throws and leaves the DOM unchanged', () => {
+    const host = mount();
+    host.expandAll();
+    const layers = node(host, 'Layers')!;
+    const roads = node(host, 'Roads')!;
+
+    expect(() => host.move(layers, roads)).toThrow(/subtree/);
+    expect(layers.contains(roads)).toBe(true);
+    expect(layers.parentElement).toBe(host); // Layers is still a root, unmoved
+  });
+});
+
+describe('TreeViewElement — surgical mutation', () => {
+  it('unaffected nodes remain the same instances across add/remove/move', () => {
+    const host = mount();
+    host.expandAll();
+    const water = node(host, 'Water')!;
+    const highways = node(host, 'Highways')!;
+    const basemaps = node(host, 'Basemaps')!;
+
+    host.add(makeNode('Extra'), node(host, 'Roads'));
+    host.removeNode(node(host, 'Streets')!);
+    host.move(basemaps, node(host, 'Roads'));
+
+    expect(node(host, 'Water')).toBe(water);
+    expect(node(host, 'Highways')).toBe(highways);
+    expect(node(host, 'Basemaps')).toBe(basemaps);
   });
 });
 
