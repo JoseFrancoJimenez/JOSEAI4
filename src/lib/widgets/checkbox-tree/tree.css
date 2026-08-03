@@ -1,0 +1,84 @@
+/* Rows are <tree-node> custom elements. Styles work standalone (bare node) and inside a <checkbox-tree>. */
+tree-node {
+  display: block;
+
+  /* Own row only — the `>` stops a parent's state from restyling descendant rows. */
+  & > .tree-node__row {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 3px 8px 3px 4px;
+    border-radius: 3px;
+
+    .tree-node__toggle {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .tree-node__toggle-icon {
+        width: 6px;
+        height: 10px;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        fill: none;
+        transition: transform 0.15s ease;
+      }
+    }
+
+    .tree-node__checkbox {
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      margin-top: 2px;
+      border-radius: 2px;
+      border: 1px solid currentColor;
+
+      &[data-state='checked'] {
+        background: currentColor;
+      }
+
+      &[data-state='mixed'] {
+        background: currentColor;
+        opacity: 0.5;
+      }
+    }
+
+    .tree-node__content {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  /* Expanded: rotate this node's own toggle icon. */
+  &[aria-expanded='true'] > .tree-node__row .tree-node__toggle-icon {
+    transform: rotate(90deg);
+  }
+
+  /* Leaf: keep the toggle's layout space (rows stay aligned) but hide it from view and the a11y tree. */
+  &.is-leaf > .tree-node__row .tree-node__toggle {
+    visibility: hidden;
+  }
+
+  /* Nested child group: structural indentation with a guide line. Stays in the DOM at all times (eager build). */
+  & > .tree-node__group {
+    padding-left: 16px;
+    margin-left: 7px;
+    border-left: 1px solid var(--tree-indent-line, #2a2f3a);
+  }
+
+  /* CSS collapse: hide a collapsed group's descendants from layout/paint while keeping them in the DOM. */
+  &[aria-expanded='false'] > .tree-node__group {
+    display: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tree-focus-ring, #5b8af5);
+    outline-offset: -2px;
+  }
+}
