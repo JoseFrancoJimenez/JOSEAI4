@@ -1,0 +1,287 @@
+{
+  "type": "vector",
+  "id": "provinces",
+  "label": "Canada Provinces",
+  "source": { "type": "geojson", "url": "/testData/sourceLayers/test-provinces.geojson" },
+  "visible": false,
+  "fields": [
+    { "id": "name",                   "label": "Province / Territory" },
+    { "id": "region",                 "label": "Region" },
+    { "id": "provinceType",           "label": "Type" },
+    { "id": "officialLanguage",       "label": "Official Language" },
+    { "id": "population",             "label": "Population" },
+    { "id": "areaKm2",                "label": "Area (km²)" },
+    { "id": "densityPerKm2",          "label": "Density (per km²)" },
+    { "id": "gdpBillionsCAD",         "label": "GDP (Billions CAD)" },
+    { "id": "urbanPct",               "label": "Urban Population (%)" },
+    { "id": "medianHouseholdIncome",  "label": "Median Household Income" },
+    { "id": "unemploymentRate",       "label": "Unemployment Rate (%)" },
+    { "id": "founded",                "label": "Year Founded" }
+  ],
+  "default_variable": "population",
+  "variables": [
+    {
+      "id": "population",
+      "renderer": [
+        {
+          "fill-color": [
+            "case",
+            ["<", ["get", "population"], 50000],   "#deebf7",
+            ["<", ["get", "population"], 200000],  "#9ecae1",
+            ["<", ["get", "population"], 1000000], "#6baed6",
+            ["<", ["get", "population"], 5000000], "#2171b5",
+            "#084594"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Population",
+        "items": [
+          { "label": "< 50,000",             "color": "#deebf7" },
+          { "label": "50,000 – 200,000",     "color": "#9ecae1" },
+          { "label": "200,000 – 1,000,000",  "color": "#6baed6" },
+          { "label": "1,000,000 – 5,000,000","color": "#2171b5" },
+          { "label": "> 5,000,000",          "color": "#084594" }
+        ]
+      }
+    },
+    {
+      "id": "areaKm2",
+      "renderer": [
+        {
+          "fill-color": [
+            "case",
+            ["<", ["get", "areaKm2"], 75000],   "#edf8e9",
+            ["<", ["get", "areaKm2"], 500000],  "#bae4b3",
+            ["<", ["get", "areaKm2"], 750000],  "#74c476",
+            ["<", ["get", "areaKm2"], 1200000], "#238b45",
+            "#00441b"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Area (km²)",
+        "items": [
+          { "label": "< 75,000 km²",             "color": "#edf8e9" },
+          { "label": "75,000 – 500,000 km²",     "color": "#bae4b3" },
+          { "label": "500,000 – 750,000 km²",    "color": "#74c476" },
+          { "label": "750,000 – 1,200,000 km²",  "color": "#238b45" },
+          { "label": "> 1,200,000 km²",           "color": "#00441b" }
+        ]
+      }
+    },
+    {
+      "id": "region",
+      "renderer": [
+        {
+          "fill-color": [
+            "match", ["get", "region"],
+            "West",     "#1f78b4",
+            "Prairies", "#762a83",
+            "Central",  "#d6604d",
+            "Atlantic", "#4393c3",
+            "North",    "#bdbdbd",
+            "#cccccc"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Region",
+        "items": [
+          { "label": "West",     "color": "#1f78b4" },
+          { "label": "Prairies", "color": "#762a83" },
+          { "label": "Central",  "color": "#d6604d" },
+          { "label": "Atlantic", "color": "#4393c3" },
+          { "label": "North",    "color": "#bdbdbd" }
+        ]
+      }
+    },
+    {
+      "id": "gdpBillionsCAD",
+      "renderer": [
+        {
+          "fill-color": [
+            "case",
+            ["<", ["get", "gdpBillionsCAD"], 10],  "#feedde",
+            ["<", ["get", "gdpBillionsCAD"], 50],  "#fdbe85",
+            ["<", ["get", "gdpBillionsCAD"], 100], "#fd8d3c",
+            ["<", ["get", "gdpBillionsCAD"], 500], "#e6550d",
+            "#a63603"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "GDP (Billions CAD)",
+        "items": [
+          { "label": "< $10B",        "color": "#feedde" },
+          { "label": "$10B – $50B",   "color": "#fdbe85" },
+          { "label": "$50B – $100B",  "color": "#fd8d3c" },
+          { "label": "$100B – $500B", "color": "#e6550d" },
+          { "label": "> $500B",       "color": "#a63603" }
+        ]
+      }
+    },
+    {
+      "id": "officialLanguage",
+      "renderer": [
+        {
+          "fill-color": [
+            "match", ["get", "officialLanguage"],
+            "English",   "#1f78b4",
+            "French",    "#e31a1c",
+            "Bilingual", "#6a3d9a",
+            "#cccccc"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Official Language",
+        "items": [
+          { "label": "English",   "color": "#1f78b4" },
+          { "label": "French",    "color": "#e31a1c" },
+          { "label": "Bilingual", "color": "#6a3d9a" }
+        ]
+      }
+    },
+    {
+      "id": "provinceType",
+      "renderer": [
+        {
+          "fill-color": [
+            "match", ["get", "provinceType"],
+            "Province",  "#2ca25f",
+            "Territory", "#ff7f00",
+            "#cccccc"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Type",
+        "items": [
+          { "label": "Province",  "color": "#2ca25f" },
+          { "label": "Territory", "color": "#ff7f00" }
+        ]
+      }
+    },
+    {
+      "id": "urbanPct",
+      "renderer": [
+        {
+          "fill-color": [
+            "case",
+            ["<", ["get", "urbanPct"], 50], "#f2f0f7",
+            ["<", ["get", "urbanPct"], 65], "#dadaeb",
+            ["<", ["get", "urbanPct"], 75], "#bcbddc",
+            ["<", ["get", "urbanPct"], 85], "#756bb1",
+            "#54278f"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Urban Population (%)",
+        "items": [
+          { "label": "< 50%",    "color": "#f2f0f7" },
+          { "label": "50 – 65%", "color": "#dadaeb" },
+          { "label": "65 – 75%", "color": "#bcbddc" },
+          { "label": "75 – 85%", "color": "#756bb1" },
+          { "label": "> 85%",    "color": "#54278f" }
+        ]
+      }
+    },
+    {
+      "id": "medianHouseholdIncome",
+      "renderer": [
+        {
+          "fill-color": [
+            "case",
+            ["<", ["get", "medianHouseholdIncome"], 56000], "#ffffcc",
+            ["<", ["get", "medianHouseholdIncome"], 62000], "#c2e699",
+            ["<", ["get", "medianHouseholdIncome"], 70000], "#78c679",
+            ["<", ["get", "medianHouseholdIncome"], 76000], "#31a354",
+            "#006837"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Median Household Income",
+        "items": [
+          { "label": "< $56,000",            "color": "#ffffcc" },
+          { "label": "$56,000 – $62,000",    "color": "#c2e699" },
+          { "label": "$62,000 – $70,000",    "color": "#78c679" },
+          { "label": "$70,000 – $76,000",    "color": "#31a354" },
+          { "label": "> $76,000",            "color": "#006837" }
+        ]
+      }
+    },
+    {
+      "id": "unemploymentRate",
+      "renderer": [
+        {
+          "fill-color": [
+            "case",
+            ["<", ["get", "unemploymentRate"], 5.5], "#ffffb2",
+            ["<", ["get", "unemploymentRate"], 6.5], "#fecc5c",
+            ["<", ["get", "unemploymentRate"], 8.0], "#fd8d3c",
+            ["<", ["get", "unemploymentRate"], 10],  "#f03b20",
+            "#bd0026"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Unemployment Rate (%)",
+        "items": [
+          { "label": "< 5.5%",     "color": "#ffffb2" },
+          { "label": "5.5 – 6.5%", "color": "#fecc5c" },
+          { "label": "6.5 – 8%",   "color": "#fd8d3c" },
+          { "label": "8 – 10%",    "color": "#f03b20" },
+          { "label": "> 10%",      "color": "#bd0026" }
+        ]
+      }
+    },
+    {
+      "id": "densityPerKm2",
+      "renderer": [
+        {
+          "fill-color": [
+            "case",
+            ["<", ["get", "densityPerKm2"], 0.1], "#f1eef6",
+            ["<", ["get", "densityPerKm2"], 2],   "#bdc9e1",
+            ["<", ["get", "densityPerKm2"], 8],   "#74a9cf",
+            ["<", ["get", "densityPerKm2"], 15],  "#2b8cbe",
+            "#045a8d"
+          ],
+          "stroke-color": "#ffffff",
+          "stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Density (per km²)",
+        "items": [
+          { "label": "< 0.1 /km²",    "color": "#f1eef6" },
+          { "label": "0.1 – 2 /km²",  "color": "#bdc9e1" },
+          { "label": "2 – 8 /km²",    "color": "#74a9cf" },
+          { "label": "8 – 15 /km²",   "color": "#2b8cbe" },
+          { "label": "> 15 /km²",     "color": "#045a8d" }
+        ]
+      }
+    }
+  ]
+}

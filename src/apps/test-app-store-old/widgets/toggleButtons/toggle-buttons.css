@@ -1,0 +1,14 @@
+toggle-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.toggle-button.is-unchecked {
+  background: lightblue;
+}
+
+.toggle-button.is-checked {
+  background: lightpink;
+}

@@ -1,0 +1,338 @@
+{
+  "type": "vector",
+  "id": "points",
+  "label": "Sample Points",
+  "source": { "type": "geojson", "url": "/testData/sourceLayers/test-points.geojson" },
+  "visible": true,
+  "fields": [
+    { "id": "name",        "label": "City" },
+    { "id": "province",    "label": "Province" },
+    { "id": "tier",        "label": "City Tier" },
+    { "id": "population",  "label": "Population" },
+    { "id": "areaKm2",     "label": "Area (km²)" },
+    { "id": "founded",     "label": "Year Founded" },
+    { "id": "isCapital",   "label": "Provincial Capital" },
+    { "id": "climate",     "label": "Climate Zone" },
+    { "id": "elevation",   "label": "Elevation (m)" },
+    { "id": "avgIncome",   "label": "Avg. Household Income" },
+    { "id": "crimeIndex",  "label": "Crime Index (1–10)" },
+    { "id": "hasUniversity","label": "Has University" },
+    { "id": "hasAirport",  "label": "Has Airport" },
+    { "id": "typeOfDamage","label": "Type of Damage" },
+    { "id": "typeOfFood",  "label": "Type of Food" }
+  ],
+  "default_variable": "tier",
+  "variables": [
+    {
+      "id": "tier",
+      "renderer": [
+        {
+          "circle-radius": [
+            "match", ["get", "tier"],
+            "Metro",  14,
+            "Large",  10,
+            "Medium", 6,
+            4
+          ],
+          "circle-fill-color": [
+            "match", ["get", "tier"],
+            "Metro",  "#d73027",
+            "Large",  "#fc8d59",
+            "Medium", "#fee08b",
+            "#d9ef8b"
+          ],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "City Tier",
+        "items": [
+          { "label": "Metro  (> 1M)",      "color": "#d73027" },
+          { "label": "Large  (300K–1M)",   "color": "#fc8d59" },
+          { "label": "Medium (100K–300K)", "color": "#fee08b" },
+          { "label": "Small  (< 100K)",    "color": "#d9ef8b" }
+        ]
+      }
+    },
+    {
+      "id": "population",
+      "renderer": [
+        {
+          "circle-radius": [
+            "interpolate", ["linear"], ["get", "population"],
+            5000,    3,
+            50000,   5,
+            200000,  8,
+            500000,  11,
+            1500000, 16,
+            3000000, 22
+          ],
+          "circle-fill-color": "rgba(66, 133, 244, 0.65)",
+          "circle-stroke-color": "#1a56c7",
+          "circle-stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Population (circle size)",
+        "items": [
+          { "label": "< 50,000",   "color": "rgba(66,133,244,0.65)" },
+          { "label": "50K – 200K", "color": "rgba(66,133,244,0.65)" },
+          { "label": "200K – 1M",  "color": "rgba(66,133,244,0.65)" },
+          { "label": "> 1,000,000","color": "rgba(66,133,244,0.65)" }
+        ]
+      }
+    },
+    {
+      "id": "isCapital",
+      "renderer": [
+        {
+          "filter": ["==", ["get", "isCapital"], true],
+          "circle-radius": 8,
+          "circle-fill-color": "#FFD700",
+          "circle-stroke-color": "#B8860B",
+          "circle-stroke-width": 1.5
+        }
+      ],
+      "legend": {
+        "label": "Provincial Capitals only",
+        "items": [
+          { "label": "Provincial Capital", "color": "#FFD700" }
+        ]
+      }
+    },
+    {
+      "id": "climate",
+      "renderer": [
+        {
+          "circle-radius": 6,
+          "circle-fill-color": [
+            "match", ["get", "climate"],
+            "Oceanic",           "#1f78b4",
+            "Humid Continental", "#33a02c",
+            "Continental",       "#ff7f00",
+            "Semi-arid",         "#e31a1c",
+            "Subarctic",         "#6a3d9a",
+            "Arctic",            "#a6cee3",
+            "#888888"
+          ],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Climate Zone",
+        "items": [
+          { "label": "Oceanic",           "color": "#1f78b4" },
+          { "label": "Humid Continental", "color": "#33a02c" },
+          { "label": "Continental",       "color": "#ff7f00" },
+          { "label": "Semi-arid",         "color": "#e31a1c" },
+          { "label": "Subarctic",         "color": "#6a3d9a" },
+          { "label": "Arctic",            "color": "#a6cee3" }
+        ]
+      }
+    },
+    {
+      "id": "crimeIndex",
+      "renderer": [
+        {
+          "circle-radius": 6,
+          "circle-fill-color": [
+            "case",
+            ["<", ["get", "crimeIndex"], 3], "#1a9641",
+            ["<", ["get", "crimeIndex"], 4], "#a6d96a",
+            ["<", ["get", "crimeIndex"], 5], "#ffffbf",
+            ["<", ["get", "crimeIndex"], 6], "#fdae61",
+            "#d7191c"
+          ],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Crime Index (1–10)",
+        "items": [
+          { "label": "1–2  (Very Low)", "color": "#1a9641" },
+          { "label": "3    (Low)",      "color": "#a6d96a" },
+          { "label": "4    (Moderate)", "color": "#ffffbf" },
+          { "label": "5    (High)",     "color": "#fdae61" },
+          { "label": "6–7  (Very High)","color": "#d7191c" }
+        ]
+      }
+    },
+    {
+      "id": "hasUniversity",
+      "renderer": [
+        {
+          "filter": ["==", ["get", "hasUniversity"], true],
+          "circle-radius": 6,
+          "circle-fill-color": "#1b7837",
+          "circle-stroke-color": "#00441b",
+          "circle-stroke-width": 1
+        },
+        {
+          "filter": ["==", ["get", "hasUniversity"], false],
+          "circle-radius": 5,
+          "circle-fill-color": "#d73027",
+          "circle-stroke-color": "#a50026",
+          "circle-stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "University",
+        "items": [
+          { "label": "Has University",    "color": "#1b7837" },
+          { "label": "No University",     "color": "#d73027" }
+        ]
+      }
+    },
+    {
+      "id": "founded",
+      "renderer": [
+        {
+          "circle-radius": 6,
+          "circle-fill-color": [
+            "case",
+            ["<", ["get", "founded"], 1750], "#7b3294",
+            ["<", ["get", "founded"], 1870], "#c2a5cf",
+            ["<", ["get", "founded"], 1900], "#f7f7f7",
+            ["<", ["get", "founded"], 1950], "#a6dba0",
+            "#008837"
+          ],
+          "circle-stroke-color": "#555555",
+          "circle-stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Era Founded",
+        "items": [
+          { "label": "Before 1750",  "color": "#7b3294" },
+          { "label": "1750 – 1870",  "color": "#c2a5cf" },
+          { "label": "1870 – 1900",  "color": "#f7f7f7" },
+          { "label": "1900 – 1950",  "color": "#a6dba0" },
+          { "label": "After 1950",   "color": "#008837" }
+        ]
+      }
+    },
+    {
+      "id": "typeOfDamage",
+      "renderer": [
+        {
+          "filter": ["==", ["get", "typeOfDamage"], "A"],
+          "label": "Type A",
+          "style": { "circle-radius": 6, "circle-fill-color": "#e41a1c", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        },
+        {
+          "filter": ["==", ["get", "typeOfDamage"], "B"],
+          "label": "Type B",
+          "style": { "circle-radius": 6, "circle-fill-color": "#377eb8", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        },
+        {
+          "filter": ["==", ["get", "typeOfDamage"], "C"],
+          "label": "Type C",
+          "style": { "circle-radius": 6, "circle-fill-color": "#4daf4a", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        },
+        {
+          "filter": ["==", ["get", "typeOfDamage"], "D"],
+          "label": "Type D",
+          "style": { "circle-radius": 6, "circle-fill-color": "#984ea3", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        },
+        {
+          "else": true,
+          "label": "Other",
+          "style": { "circle-radius": 5, "circle-fill-color": "#888888", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        }
+      ],
+      "legend": {
+        "items": [
+          { "label": "Type A", "color": "#e41a1c" },
+          { "label": "Type B", "color": "#377eb8" },
+          { "label": "Type C", "color": "#4daf4a" },
+          { "label": "Type D", "color": "#984ea3" }
+        ]
+      }
+    },
+    {
+      "id": "typeOfFood",
+      "renderer": [
+        {
+          "filter": ["==", ["get", "typeOfFood"], "X"],
+          "label": "Type X",
+          "style": { "circle-radius": 6, "circle-fill-color": "#ffd92f", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        },
+        {
+          "filter": ["==", ["get", "typeOfFood"], "Y"],
+          "label": "Type Y",
+          "style": { "circle-radius": 6, "circle-fill-color": "#8da0cb", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        },
+        {
+          "filter": ["==", ["get", "typeOfFood"], "W"],
+          "label": "Type W",
+          "style": { "circle-radius": 6, "circle-fill-color": "#fc8d62", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        },
+        {
+          "filter": ["==", ["get", "typeOfFood"], "Z"],
+          "label": "Type Z",
+          "style": { "circle-radius": 6, "circle-fill-color": "#66c2a5", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        },
+        {
+          "else": true,
+          "label": "Other",
+          "style": { "circle-radius": 5, "circle-fill-color": "#888888", "circle-stroke-color": "#fff", "circle-stroke-width": 1 }
+        }
+      ],
+      "legend": {
+        "items": [
+          { "label": "Type X", "color": "#ffd92f" },
+          { "label": "Type Y", "color": "#8da0cb" },
+          { "label": "Type W", "color": "#fc8d62" },
+          { "label": "Type Z", "color": "#66c2a5" }
+        ]
+      }
+    },
+    {
+      "id": "name",
+      "renderer": [
+        {
+          "circle-radius": 5,
+          "circle-fill-color": "#FF4500",
+          "circle-stroke-color": "#8B0000",
+          "circle-stroke-width": 1
+        }
+      ],
+      "legend": { "label": "All Cities", "items": [{ "label": "City", "color": "#FF4500" }] }
+    },
+    {
+      "id": "visibilityTest",
+      "renderer": [
+        {
+          "circle-radius": [
+            "case",
+            ["any", ["==", ["get", "province"], "Ontario"], ["==", ["get", "province"], "Quebec"]],
+            0,
+            6
+          ],
+          "circle-fill-color": [
+            "case",
+            ["any", ["==", ["get", "province"], "Ontario"], ["==", ["get", "province"], "Quebec"]],
+            "rgba(0,0,0,0)",
+            "#FF4500"
+          ],
+          "circle-stroke-color": [
+            "case",
+            ["any", ["==", ["get", "province"], "Ontario"], ["==", ["get", "province"], "Quebec"]],
+            "rgba(0,0,0,0)",
+            "#8B0000"
+          ],
+          "circle-stroke-width": 1
+        }
+      ],
+      "legend": {
+        "label": "Visibility Test",
+        "items": [
+          { "label": "Visible (not ON or QC)", "color": "#FF4500" }
+        ]
+      }
+    }
+  ]
+}

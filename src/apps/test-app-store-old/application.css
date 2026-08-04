@@ -1,0 +1,8 @@
+
+  /* ── Checkbox ────────────────────────────────────────────────── */
+
+  .toc-checkbox {
+    margin: 0 6px 0 0;
+    vertical-align: middle;
+    accent-color: var(--toc-focus-ring);
+  }

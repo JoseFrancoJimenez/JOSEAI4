@@ -1,0 +1,11 @@
+[
+  { "id": "Boundaries", "parent_id": null, "type": "group" },
+  { "id": "Census2021CMA", "parent_id": "Boundaries", "type": "layer" },
+  { "id": "Census2021CSD", "parent_id": "Boundaries", "type": "layer" },
+  { "id": "Indices", "parent_id": null, "type": "group" },
+  { "id": "CIMD", "parent_id": "Indices", "type": "layer" },
+  { "id": "SAM1", "parent_id": "CIMD", "type": "layer" },
+  { "id": "SAM2", "parent_id": "SAM1", "type": "layer" },
+  { "id": "SAM3", "parent_id": "SAM1", "type": "layer" },
+  { "id": "SAM4", "parent_id": "SAM2", "type": "layer" }
+]

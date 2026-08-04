@@ -1,0 +1,20 @@
+control-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.control-bar-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.check-all-button    { background: #2563eb; }
+.uncheck-all-button  { background: #dc2626; }
+.expand-all-button   { background: #16a34a; }
+.collapse-all-button { background: #fef08a; color: #713f12; }
