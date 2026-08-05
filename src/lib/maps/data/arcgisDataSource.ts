@@ -6,8 +6,8 @@ import { toEsriWhere } from './filter/toEsriWhere.ts';
 export interface ArcGisDataSourceConfig {
   /** Layer endpoint: `…/FeatureServer/0` or `…/MapServer/0`. */
   url: string;
-  /** Property holding the object id, used as a fallback when the GeoJSON feature has no `id`. */
-  idField?: string;
+  /** Property holding the object id (GeoJSON `feature.id` fallback). */
+  idField: string;
   /** Always AND-combined with the per-query filter. */
   baseFilter?: FilterNode;
   /** Allowlist of queryable columns; filters on any other field throw. Omit to skip the check. */
@@ -115,8 +115,7 @@ export class ArcGisDataSource implements LayerDataSource {
 
   #toAppFeature(f: NonNullable<EsriGeoJsonResponse['features']>[number]): AppFeature {
     const properties = f.properties ?? {};
-    const idField = this.#config.idField;
-    const id = f.id ?? (idField ? properties[idField] : undefined);
+    const id = f.id ?? properties[this.#config.idField];
     return {
       id: String(id ?? ''),
       properties,

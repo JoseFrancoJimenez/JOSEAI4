@@ -1,36 +1,56 @@
 import type { LayerDataSource } from './types.ts';
-import type { LayerConfig } from '../layers/types.ts';
-import { GeoJsonDataSource } from './geoJsonDataSource.ts';
-import { ArcGisDataSource } from './arcgisDataSource.ts';
+import type { LayerConfig, VectorLayerConfig } from '../layers/types.ts';
+import { collectFilterFields } from './filter/ast.ts';
 import { WfsDataSource } from './wfsDataSource.ts';
+import { ArcGisDataSource } from './arcgisDataSource.ts';
 
 /** Layer id → data source; built by the app's composition root. */
 export type DataSourceRegistry = Map<string, LayerDataSource>;
 
 /**
- * Creates the {@link LayerDataSource} for a vector layer config, dispatching on
- * `source.type`: local `geojson` files query in-memory, while `esrijson` and
- * `wfs` page against their backend. The only sanctioned way to obtain an adapter
- * instance outside `src/lib/maps/data`.
- * @throws {Error} If the layer is not a vector layer.
+ * The columns a layer's filters may reference: its declared fields, the id
+ * field, and whatever the (trusted) baseFilter itself uses. The compilers
+ * reject clauses on anything else — field names are interpolated into query
+ * strings, so unknown ones must never get that far.
+ */
+function knownFieldsFor(config: VectorLayerConfig): string[] {
+  const fields = config.fields.map(f => f.id);
+  if (config.idField) fields.push(config.idField);
+  if (config.baseFilter) fields.push(...collectFilterFields(config.baseFilter));
+  return fields;
+}
+
+/**
+ * Creates the {@link LayerDataSource} for a layer config with a data-backend
+ * source (`source.kind: 'wfs' | 'arcgis'`). The only sanctioned way to obtain
+ * an adapter instance outside `src/lib/mapping/data`.
  */
 export function createDataSource(config: LayerConfig): LayerDataSource {
-  if (config.type !== 'vector') {
-    throw new Error(`Layer "${config.id}" is not a vector layer; it has no data source`);
+  if (config.type !== 'vector' || !('kind' in config.source)) {
+    throw new Error(`Layer "${config.id}" has no data-backend source`);
   }
 
-  // The columns a query may reference: the layer's declared fields. Field names
-  // are interpolated into backend query strings, so the compilers reject any
-  // clause on a column outside this allowlist.
-  const knownFields = config.fields.map(field => field.id);
   const source = config.source;
-
-  switch (source.type) {
-    case 'geojson':
-      return new GeoJsonDataSource({ url: source.url });
-    case 'esrijson':
-      return new ArcGisDataSource({ url: source.url, knownFields });
+  switch (source.kind) {
     case 'wfs':
-      return new WfsDataSource({ url: source.url, typeName: source.typeName, knownFields });
+      return new WfsDataSource({
+        url: source.url,
+        typeName: source.typeName,
+        geometryName: source.geometryName,
+        idField: config.idField,
+        baseFilter: config.baseFilter,
+        knownFields: knownFieldsFor(config),
+      });
+    case 'arcgis': {
+      if (!config.idField) {
+        throw new Error(`Layer "${config.id}": arcgis sources require "idField"`);
+      }
+      return new ArcGisDataSource({
+        url: source.url,
+        idField: config.idField,
+        baseFilter: config.baseFilter,
+        knownFields: knownFieldsFor(config),
+      });
+    }
   }
 }

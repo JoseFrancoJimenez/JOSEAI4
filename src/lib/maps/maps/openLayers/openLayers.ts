@@ -1,5 +1,7 @@
+import 'ol/ol.css';
 import OLMap from 'ol/Map.js';
 import View from 'ol/View.js';
+import { fromLonLat } from 'ol/proj.js';
 import type OLBaseLayer from 'ol/layer/Base.js';
 import type { Extent } from 'ol/extent.js';
 
@@ -9,7 +11,7 @@ export type { OLMap, OLBaseLayer };
 export interface MapConfig {
   /** DOM element or element ID to render the map into. */
   target: string | HTMLElement;
-  /** Initial map center in the map's projection coordinates. */
+  /** Initial map center as lon/lat (EPSG:4326); converted to the view projection here. */
   center: [number, number];
   /** Initial zoom level. */
   zoom: number;
@@ -31,7 +33,7 @@ export function createMap(config: MapConfig): OLMap {
     target: config.target,
     view: new View({
       projection: config.projection ?? 'EPSG:3857',
-      center: config.center,
+      center: fromLonLat(config.center, config.projection ?? 'EPSG:3857'),
       zoom: config.zoom,
       extent: config.extent,
       constrainOnlyCenter: config.constrainOnlyCenter,

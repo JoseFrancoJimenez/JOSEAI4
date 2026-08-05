@@ -1,6 +1,16 @@
+import type { FilterNode } from '../data/filter/ast.ts';
+
 export interface FieldConfig {
   id: string;
   label: string;
+  /** Value type; the filter widget coerces input to number for numeric fields. */
+  type?: 'string' | 'number';
+  /** Show as a data-table column. */
+  inTable?: boolean;
+  /** Show in the identify popup. */
+  inPopup?: boolean;
+  /** Offer in the filter widget. */
+  filterable?: boolean;
 }
 
 export interface LegendItem {
@@ -27,6 +37,10 @@ export interface BaseLayerConfig {
   visible?: boolean;
   opacity?: number;
   legend?: Partial<Legend>;
+  /** Property that uniquely identifies a feature (fallback when the format carries no id). */
+  idField?: string;
+  /** Neutral filter AND-combined into every data query and display load. */
+  baseFilter?: FilterNode;
 }
 
 // ── Vector source configs ────────────────────────────────────────────────────
@@ -48,7 +62,29 @@ export interface WFSSourceConfig {
   version?: string;
 }
 
-export type VectorSourceConfig = GeoJSONSourceConfig | EsriJSONSourceConfig | WFSSourceConfig;
+// ── Data-backend source configs (ADR-4: queryable via createDataSource) ──────
+
+export interface WfsBackendSourceConfig {
+  kind: 'wfs';
+  url: string;
+  typeName: string;
+  /** Geometry attribute for spatial CQL. Default `'the_geom'`. */
+  geometryName?: string;
+}
+
+export interface ArcGisBackendSourceConfig {
+  kind: 'arcgis';
+  /** Layer endpoint: `…/FeatureServer/0` or `…/MapServer/0`. */
+  url: string;
+}
+
+export type BackendSourceConfig = WfsBackendSourceConfig | ArcGisBackendSourceConfig;
+
+export type VectorSourceConfig =
+  | GeoJSONSourceConfig
+  | EsriJSONSourceConfig
+  | WFSSourceConfig
+  | BackendSourceConfig;
 
 // ── Tile source configs ──────────────────────────────────────────────────────
 

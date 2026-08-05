@@ -1,6 +1,10 @@
-const app = document.querySelector<HTMLDivElement>("#app");
-if (app) {
-  app.innerHTML = "<h1>app-demo-stores — single store</h1>";
-}
+import "ol/ol.css";
+import "./app.css";
+import { createMapController } from "./map/controller.ts";
 
-export {};
+createMapController("map");
+
+const panel = document.querySelector<HTMLDivElement>("#panel");
+if (panel) {
+  panel.innerHTML = "<h1>app-demo-stores — single store</h1>";
+}

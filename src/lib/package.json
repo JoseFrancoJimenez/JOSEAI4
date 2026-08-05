@@ -5,6 +5,10 @@
   "exports": {
     "./core": "./core/index.ts",
     "./elements": "./elements/index.ts",
-    "./widgets": "./widgets/index.ts"
+    "./widgets": "./widgets/index.ts",
+    "./maps": "./maps/index.ts"
+  },
+  "dependencies": {
+    "ol": "^10.10.0"
   }
 }
