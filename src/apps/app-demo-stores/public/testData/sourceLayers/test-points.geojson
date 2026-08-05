@@ -1,0 +1,1240 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.3832,
+          43.6532
+        ]
+      },
+      "properties": {
+        "name": "Toronto",
+        "province": "Ontario",
+        "population": 2731571,
+        "founded": 1834,
+        "areaKm2": 630,
+        "isCapital": true,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Humid Continental",
+        "tier": "Metro",
+        "hasUniversity": true,
+        "avgIncome": 72000,
+        "elevation": 76,
+        "crimeIndex": 3,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5673,
+          45.5017
+        ]
+      },
+      "properties": {
+        "name": "Montreal",
+        "province": "Quebec",
+        "population": 1762949,
+        "founded": 1642,
+        "areaKm2": 365,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Humid Continental",
+        "tier": "Metro",
+        "hasUniversity": true,
+        "avgIncome": 58000,
+        "elevation": 69,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -123.1207,
+          49.2827
+        ]
+      },
+      "properties": {
+        "name": "Vancouver",
+        "province": "British Columbia",
+        "population": 662248,
+        "founded": 1886,
+        "areaKm2": 115,
+        "isCapital": false,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Oceanic",
+        "tier": "Large",
+        "hasUniversity": true,
+        "avgIncome": 68000,
+        "elevation": 70,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.0719,
+          51.0447
+        ]
+      },
+      "properties": {
+        "name": "Calgary",
+        "province": "Alberta",
+        "population": 1336000,
+        "founded": 1884,
+        "areaKm2": 825,
+        "isCapital": false,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Continental",
+        "tier": "Metro",
+        "hasUniversity": true,
+        "avgIncome": 82000,
+        "elevation": 1048,
+        "crimeIndex": 3,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -113.4909,
+          53.5444
+        ]
+      },
+      "properties": {
+        "name": "Edmonton",
+        "province": "Alberta",
+        "population": 1010899,
+        "founded": 1904,
+        "areaKm2": 684,
+        "isCapital": true,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Continental",
+        "tier": "Metro",
+        "hasUniversity": true,
+        "avgIncome": 75000,
+        "elevation": 671,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -75.6972,
+          45.4215
+        ]
+      },
+      "properties": {
+        "name": "Ottawa",
+        "province": "Ontario",
+        "population": 1017449,
+        "founded": 1855,
+        "areaKm2": 2790,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Humid Continental",
+        "tier": "Metro",
+        "hasUniversity": true,
+        "avgIncome": 76000,
+        "elevation": 70,
+        "crimeIndex": 2,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.1384,
+          49.8951
+        ]
+      },
+      "properties": {
+        "name": "Winnipeg",
+        "province": "Manitoba",
+        "population": 749607,
+        "founded": 1873,
+        "areaKm2": 464,
+        "isCapital": true,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Continental",
+        "tier": "Large",
+        "hasUniversity": true,
+        "avgIncome": 61000,
+        "elevation": 232,
+        "crimeIndex": 6,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.208,
+          46.8139
+        ]
+      },
+      "properties": {
+        "name": "Quebec City",
+        "province": "Quebec",
+        "population": 542298,
+        "founded": 1608,
+        "areaKm2": 454,
+        "isCapital": true,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Humid Continental",
+        "tier": "Large",
+        "hasUniversity": true,
+        "avgIncome": 56000,
+        "elevation": 98,
+        "crimeIndex": 2,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.5752,
+          44.6488
+        ]
+      },
+      "properties": {
+        "name": "Halifax",
+        "province": "Nova Scotia",
+        "population": 439819,
+        "founded": 1749,
+        "areaKm2": 5490,
+        "isCapital": true,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Humid Continental",
+        "tier": "Large",
+        "hasUniversity": true,
+        "avgIncome": 58000,
+        "elevation": 145,
+        "crimeIndex": 3,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -106.67,
+          52.1332
+        ]
+      },
+      "properties": {
+        "name": "Saskatoon",
+        "province": "Saskatchewan",
+        "population": 317480,
+        "founded": 1906,
+        "areaKm2": 228,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Continental",
+        "tier": "Large",
+        "hasUniversity": true,
+        "avgIncome": 68000,
+        "elevation": 481,
+        "crimeIndex": 7,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -104.6189,
+          50.4452
+        ]
+      },
+      "properties": {
+        "name": "Regina",
+        "province": "Saskatchewan",
+        "population": 236481,
+        "founded": 1882,
+        "areaKm2": 179,
+        "isCapital": true,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Continental",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 68000,
+        "elevation": 577,
+        "crimeIndex": 6,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -52.7126,
+          47.5615
+        ]
+      },
+      "properties": {
+        "name": "St. John's",
+        "province": "Newfoundland and Labrador",
+        "population": 110525,
+        "founded": 1497,
+        "areaKm2": 446,
+        "isCapital": true,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Humid Continental",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 57000,
+        "elevation": 140,
+        "crimeIndex": 3,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -123.3656,
+          48.4284
+        ]
+      },
+      "properties": {
+        "name": "Victoria",
+        "province": "British Columbia",
+        "population": 92141,
+        "founded": 1843,
+        "areaKm2": 20,
+        "isCapital": true,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Oceanic",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 62000,
+        "elevation": 20,
+        "crimeIndex": 3,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.6431,
+          45.9636
+        ]
+      },
+      "properties": {
+        "name": "Fredericton",
+        "province": "New Brunswick",
+        "population": 63116,
+        "founded": 1848,
+        "areaKm2": 131,
+        "isCapital": true,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Humid Continental",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 55000,
+        "elevation": 7,
+        "crimeIndex": 2,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -63.1311,
+          46.2382
+        ]
+      },
+      "properties": {
+        "name": "Charlottetown",
+        "province": "Prince Edward Island",
+        "population": 36094,
+        "founded": 1855,
+        "areaKm2": 44,
+        "isCapital": true,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Humid Continental",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 52000,
+        "elevation": 49,
+        "crimeIndex": 1,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -135.0568,
+          60.7212
+        ]
+      },
+      "properties": {
+        "name": "Whitehorse",
+        "province": "Yukon",
+        "population": 28201,
+        "founded": 1900,
+        "areaKm2": 421,
+        "isCapital": true,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Subarctic",
+        "tier": "Small",
+        "hasUniversity": false,
+        "avgIncome": 78000,
+        "elevation": 703,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -114.3718,
+          62.454
+        ]
+      },
+      "properties": {
+        "name": "Yellowknife",
+        "province": "Northwest Territories",
+        "population": 19569,
+        "founded": 1934,
+        "areaKm2": 106,
+        "isCapital": true,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Subarctic",
+        "tier": "Small",
+        "hasUniversity": false,
+        "avgIncome": 96000,
+        "elevation": 206,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -68.517,
+          63.7467
+        ]
+      },
+      "properties": {
+        "name": "Iqaluit",
+        "province": "Nunavut",
+        "population": 7740,
+        "founded": 1914,
+        "areaKm2": 52,
+        "isCapital": true,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Arctic",
+        "tier": "Small",
+        "hasUniversity": false,
+        "avgIncome": 88000,
+        "elevation": 34,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -89.2477,
+          48.3809
+        ]
+      },
+      "properties": {
+        "name": "Thunder Bay",
+        "province": "Ontario",
+        "population": 107909,
+        "founded": 1970,
+        "areaKm2": 328,
+        "isCapital": false,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Subarctic",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 58000,
+        "elevation": 199,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -112.8328,
+          49.6956
+        ]
+      },
+      "properties": {
+        "name": "Lethbridge",
+        "province": "Alberta",
+        "population": 101482,
+        "founded": 1906,
+        "areaKm2": 121,
+        "isCapital": false,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Semi-arid",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 67000,
+        "elevation": 929,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -64.7782,
+          46.0878
+        ]
+      },
+      "properties": {
+        "name": "Moncton",
+        "province": "New Brunswick",
+        "population": 71889,
+        "founded": 1855,
+        "areaKm2": 141,
+        "isCapital": false,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Humid Continental",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 53000,
+        "elevation": 32,
+        "crimeIndex": 3,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.7497,
+          53.9171
+        ]
+      },
+      "properties": {
+        "name": "Prince George",
+        "province": "British Columbia",
+        "population": 74003,
+        "founded": 1915,
+        "areaKm2": 318,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Subarctic",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 60000,
+        "elevation": 691,
+        "crimeIndex": 6,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -120.3273,
+          50.6745
+        ]
+      },
+      "properties": {
+        "name": "Kamloops",
+        "province": "British Columbia",
+        "population": 90280,
+        "founded": 1893,
+        "areaKm2": 298,
+        "isCapital": false,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Semi-arid",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 63000,
+        "elevation": 345,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.9909,
+          46.492
+        ]
+      },
+      "properties": {
+        "name": "Sudbury",
+        "province": "Ontario",
+        "population": 88054,
+        "founded": 1893,
+        "areaKm2": 3228,
+        "isCapital": false,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Subarctic",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 65000,
+        "elevation": 348,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.7624,
+          43.7315
+        ]
+      },
+      "properties": {
+        "name": "Brampton",
+        "province": "Ontario",
+        "population": 656480,
+        "founded": 1853,
+        "areaKm2": 266,
+        "isCapital": false,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Humid Continental",
+        "tier": "Large",
+        "hasUniversity": false,
+        "avgIncome": 68000,
+        "elevation": 178,
+        "crimeIndex": 4,
+        "hasAirport": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.6442,
+          43.589
+        ]
+      },
+      "properties": {
+        "name": "Mississauga",
+        "province": "Ontario",
+        "population": 717961,
+        "founded": 1974,
+        "areaKm2": 292,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Humid Continental",
+        "tier": "Large",
+        "hasUniversity": false,
+        "avgIncome": 74000,
+        "elevation": 156,
+        "crimeIndex": 3,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.8711,
+          43.2557
+        ]
+      },
+      "properties": {
+        "name": "Hamilton",
+        "province": "Ontario",
+        "population": 569353,
+        "founded": 1833,
+        "areaKm2": 1138,
+        "isCapital": false,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Humid Continental",
+        "tier": "Large",
+        "hasUniversity": true,
+        "avgIncome": 57000,
+        "elevation": 88,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -80.4927,
+          43.4516
+        ]
+      },
+      "properties": {
+        "name": "Kitchener",
+        "province": "Ontario",
+        "population": 256885,
+        "founded": 1912,
+        "areaKm2": 136,
+        "isCapital": false,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Humid Continental",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 64000,
+        "elevation": 336,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -81.2453,
+          42.9849
+        ]
+      },
+      "properties": {
+        "name": "London",
+        "province": "Ontario",
+        "population": 422324,
+        "founded": 1855,
+        "areaKm2": 420,
+        "isCapital": false,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Humid Continental",
+        "tier": "Large",
+        "hasUniversity": true,
+        "avgIncome": 58000,
+        "elevation": 251,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -83.0364,
+          42.3149
+        ]
+      },
+      "properties": {
+        "name": "Windsor",
+        "province": "Ontario",
+        "population": 217188,
+        "founded": 1892,
+        "areaKm2": 146,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Humid Continental",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 53000,
+        "elevation": 190,
+        "crimeIndex": 6,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.7222,
+          45.6066
+        ]
+      },
+      "properties": {
+        "name": "Laval",
+        "province": "Quebec",
+        "population": 422993,
+        "founded": 1965,
+        "areaKm2": 247,
+        "isCapital": false,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Humid Continental",
+        "tier": "Large",
+        "hasUniversity": false,
+        "avgIncome": 60000,
+        "elevation": 32,
+        "crimeIndex": 3,
+        "hasAirport": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -73.5002,
+          45.5316
+        ]
+      },
+      "properties": {
+        "name": "Longueuil",
+        "province": "Quebec",
+        "population": 239700,
+        "founded": 1657,
+        "areaKm2": 115,
+        "isCapital": false,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Humid Continental",
+        "tier": "Medium",
+        "hasUniversity": false,
+        "avgIncome": 57000,
+        "elevation": 20,
+        "crimeIndex": 3,
+        "hasAirport": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.8929,
+          45.4042
+        ]
+      },
+      "properties": {
+        "name": "Sherbrooke",
+        "province": "Quebec",
+        "population": 161323,
+        "founded": 1802,
+        "areaKm2": 366,
+        "isCapital": false,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Humid Continental",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 52000,
+        "elevation": 201,
+        "crimeIndex": 3,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -72.5491,
+          46.3432
+        ]
+      },
+      "properties": {
+        "name": "Trois-Rivieres",
+        "province": "Quebec",
+        "population": 136225,
+        "founded": 1634,
+        "areaKm2": 289,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.0597,
+          48.4283
+        ]
+      },
+      "properties": {
+        "name": "Saguenay",
+        "province": "Quebec",
+        "population": 144746,
+        "founded": 2002,
+        "areaKm2": 1126,
+        "isCapital": false,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Subarctic",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 53000,
+        "elevation": 154,
+        "crimeIndex": 2,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.849,
+          49.1913
+        ]
+      },
+      "properties": {
+        "name": "Surrey",
+        "province": "British Columbia",
+        "population": 568322,
+        "founded": 1879,
+        "areaKm2": 317,
+        "isCapital": false,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Oceanic",
+        "tier": "Large",
+        "hasUniversity": true,
+        "avgIncome": 62000,
+        "elevation": 40,
+        "crimeIndex": 5,
+        "hasAirport": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.9574,
+          49.2488
+        ]
+      },
+      "properties": {
+        "name": "Burnaby",
+        "province": "British Columbia",
+        "population": 249125,
+        "founded": 1892,
+        "areaKm2": 98,
+        "isCapital": false,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Oceanic",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 65000,
+        "elevation": 350,
+        "crimeIndex": 3,
+        "hasAirport": false
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -119.496,
+          49.888
+        ]
+      },
+      "properties": {
+        "name": "Kelowna",
+        "province": "British Columbia",
+        "population": 132084,
+        "founded": 1905,
+        "areaKm2": 211,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Semi-arid",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 60000,
+        "elevation": 344,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3055,
+          49.0504
+        ]
+      },
+      "properties": {
+        "name": "Abbotsford",
+        "province": "British Columbia",
+        "population": 153524,
+        "founded": 1995,
+        "areaKm2": 375,
+        "isCapital": false,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Oceanic",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 59000,
+        "elevation": 58,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -123.9401,
+          49.1659
+        ]
+      },
+      "properties": {
+        "name": "Nanaimo",
+        "province": "British Columbia",
+        "population": 92000,
+        "founded": 1874,
+        "areaKm2": 90,
+        "isCapital": false,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Oceanic",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 55000,
+        "elevation": 25,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -113.8112,
+          52.2681
+        ]
+      },
+      "properties": {
+        "name": "Red Deer",
+        "province": "Alberta",
+        "population": 105397,
+        "founded": 1901,
+        "areaKm2": 106,
+        "isCapital": false,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Continental",
+        "tier": "Medium",
+        "hasUniversity": true,
+        "avgIncome": 72000,
+        "elevation": 905,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -110.6764,
+          50.0418
+        ]
+      },
+      "properties": {
+        "name": "Medicine Hat",
+        "province": "Alberta",
+        "population": 63260,
+        "founded": 1899,
+        "areaKm2": 112,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Semi-arid",
+        "tier": "Small",
+        "hasUniversity": false,
+        "avgIncome": 65000,
+        "elevation": 717,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -118.7963,
+          55.1699
+        ]
+      },
+      "properties": {
+        "name": "Grande Prairie",
+        "province": "Alberta",
+        "population": 63166,
+        "founded": 1914,
+        "areaKm2": 93,
+        "isCapital": false,
+        "typeOfDamage": "C",
+        "typeOfFood": "W",
+        "climate": "Continental",
+        "tier": "Small",
+        "hasUniversity": false,
+        "avgIncome": 79000,
+        "elevation": 669,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -99.95,
+          49.8483
+        ]
+      },
+      "properties": {
+        "name": "Brandon",
+        "province": "Manitoba",
+        "population": 51313,
+        "founded": 1882,
+        "areaKm2": 77,
+        "isCapital": false,
+        "typeOfDamage": "D",
+        "typeOfFood": "Z",
+        "climate": "Continental",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 57000,
+        "elevation": 409,
+        "crimeIndex": 5,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -105.7531,
+          53.2033
+        ]
+      },
+      "properties": {
+        "name": "Prince Albert",
+        "province": "Saskatchewan",
+        "population": 37756,
+        "founded": 1885,
+        "areaKm2": 65,
+        "isCapital": false,
+        "typeOfDamage": "A",
+        "typeOfFood": "X",
+        "climate": "Subarctic",
+        "tier": "Small",
+        "hasUniversity": false,
+        "avgIncome": 56000,
+        "elevation": 428,
+        "crimeIndex": 7,
+        "hasAirport": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -66.076,
+          45.2733
+        ]
+      },
+      "properties": {
+        "name": "Saint John",
+        "province": "New Brunswick",
+        "population": 69895,
+        "founded": 1785,
+        "areaKm2": 316,
+        "isCapital": false,
+        "typeOfDamage": "B",
+        "typeOfFood": "Y",
+        "climate": "Humid Continental",
+        "tier": "Small",
+        "hasUniversity": true,
+        "avgIncome": 50000,
+        "elevation": 28,
+        "crimeIndex": 4,
+        "hasAirport": true
+      }
+    }
+  ]
+}
