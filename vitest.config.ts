@@ -24,6 +24,13 @@ export default defineConfig({
           environment: "jsdom",
         },
       },
+      {
+        test: {
+          name: "app-demo-stores",
+          root: "./src/apps/app-demo-stores",
+          environment: "jsdom",
+        },
+      },
     ],
   },
 });
