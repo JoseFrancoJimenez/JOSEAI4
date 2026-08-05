@@ -1,8 +1,8 @@
 # Project — Mini UI / Widget / Tools Library
 
-A library of **self-contained** UI elements, widgets, and tools (a base store, an event emitter) reused across multiple apps — some GIS, some not. This repo also holds throwaway prototypes for testing ideas.
+A library of **self-contained** UI elements, widgets, and tools reused across multiple apps — some GIS, some not. This repo also holds throwaway prototypes for testing ideas.
 
-**Guiding principle: be pragmatic — no over-engineering.** Build the minimum that works. Add structure, layers, or abstraction only when a concrete, present need forces it — never speculatively. Be pragmatic but not careless. Deliver good quality code that is easy to read, easy to understand, easy to maintain, easy to test and not careless.
+**Guiding principle: be pragmatic — no over-engineering.** Build the minimum that works. Add structure, layers, or abstraction only when a concrete, present need forces it — never speculatively. Be pragmatic but not careless. Deliver good quality code that is easy to read, easy to understand, easy to maintain, and easy to test.
 
 **Stack:** **pnpm** monorepo, **Vite** + **TypeScript**, **vanilla** Web Components / custom elements. **No UI frameworks** (no React, Vue, Svelte), no JSX. No runtime dependencies in library code beyond what a task explicitly requires.
 
@@ -13,8 +13,6 @@ This file is **guidance, not enforcement**. The hard invariants below are also e
 ## Read on demand (do not inline these every turn)
 
 - Architecture & patterns: `docs/plan.md`
-- Base store + example stores spec: `docs/store-brief.md`
-- TOC widget spec: `docs/toc-brief.md`
 
 ## Non-negotiable rules
 
@@ -24,7 +22,6 @@ This file is **guidance, not enforcement**. The hard invariants below are also e
 - Dependencies point **app → library**, never the reverse.
 - **No Shadow DOM.** All custom elements render into **light DOM**.
 - Contract for every element/widget: **props-down / events-up**. Input by property/attribute; output by `CustomEvent`.
-- UI Elements and Widgets must have their own CSS files (if the have CSS). We must use nested css whenever possible.
 
 **State (the store tool)**
 
