@@ -37,24 +37,34 @@ Rules that always hold:
 - Positional attributes (`aria-level`, `aria-setsize`, `aria-posinset`) are stamped synchronously when the structure is built and re-stamped by whatever changes it.
 - Decorative parts (icons, twisties, custom boxes) are `aria-hidden="true"` and never focus targets.
 
-## 5. Accessible name
+## 5. Slot content
+
+Consumer-supplied content is presentation. The component keeps ownership of meaning.
+
+- **The component sets roles and state**, never the slotted node. A consumer dropping an element into a slot must not be able to change what the component *is*.
+- **Never rely on slot content for the accessible name.** A component whose name would come from a slot must accept `aria-label` / `aria-labelledby` and apply a sensible default, because the consumer may supply an icon alone. Icon-only usage is the case to design for, not the exception.
+- **Decorative outlets are `aria-hidden="true"`** in the skeleton (an icon outlet, a twisty), so whatever lands there is excluded from the accessibility tree.
+- **No focusable content inside a composite item** — this applies to slot content too, and the consumer cannot be trusted to know. A component that slots into a roving-tabindex item documents the restriction and, where it matters, neutralises what it received.
+- **An outlet with no content and no default is removed**, not left empty — an empty element can still take space and surface as a node.
+
+## 6. Accessible name
 
 - Forward a consumer-supplied `aria-label` / `aria-labelledby` on the host; otherwise apply a sensible default.
 - Name an item from **its own** label, not its descendants: point `aria-labelledby` at the id of the item's content wrapper.
 - Every ARIA relationship needs a unique id — use the shared id helper in `src/lib/core/`. Light DOM means ids are global; collisions are silent and break naming.
 
-## 6. State and visuals
+## 7. State and visuals
 
 - State lives in the ARIA attribute; the visual is derived from it in CSS (`[aria-expanded="false"]`, `[data-state="mixed"]`). Never the reverse, and never a JS-set inline style as the source of truth.
 - Hiding a control with CSS alone is a bug: if the item still carries the ARIA state and still responds to the key, screen-reader users hear a control sighted users cannot see. Gate rendering, ARIA, and behaviour together.
 - Collapsed content that stays in the DOM must be hidden with `display: none` (or `hidden`), so it leaves the accessibility tree too.
 
-## 7. Focus visibility
+## 8. Focus visibility
 
 - Style `:focus-visible`, using the shared focus-ring token.
 - Never remove an outline without providing a replacement of at least equivalent contrast.
 
-## 8. Checklist before done
+## 9. Checklist before done
 
 - [ ] APG pattern identified and followed.
 - [ ] Keyboard contract written down and fully implemented, boundaries included.
@@ -62,10 +72,11 @@ Rules that always hold:
 - [ ] No native focusable element inside a composite item.
 - [ ] Roles, states, and positional attributes correct and updated by every mutation.
 - [ ] Accessible name present, scoped, and forwardable; ids unique.
-- [ ] Decorative parts `aria-hidden`.
+- [ ] Decorative parts and decorative outlets `aria-hidden`.
+- [ ] Accessible name survives icon-only slot content.
 - [ ] `:focus-visible` styled.
 - [ ] Disabled/empty/loading states have defined semantics.
 
-## 9. Limit of automated checks
+## 10. Limit of automated checks
 
 Tests confirm roles, attributes, and events. They cannot confirm what a screen reader announces. Do a manual pass with a real screen reader on the keyboard contract when a component is new or its semantics change — especially at the boundaries listed in §2.

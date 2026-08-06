@@ -82,6 +82,15 @@ A move test asserts the opposite: remove, re-append, flush, and confirm nothing 
 - Getters before setup return safe empties.
 - Only the affected region changed, where a component makes targeted updates.
 
+For a component with slots:
+
+- HTML content lands in the right outlet: `document.body.innerHTML = '<ui-button><span slot="icon">★</span>Save</ui-button>'`, then assert per outlet.
+- `setSlot` works both before and after render, and overrides harvested markup.
+- A slot left unsupplied keeps the component's default; an outlet with neither is removed.
+- A string is inserted as text, not parsed — `setSlot('label', '<b>x</b>')` yields no `<b>` element.
+- A move (remove, re-append, flush a microtask) does not re-harvest: the rendered skeleton is still intact.
+- An unknown slot name is ignored without throwing.
+
 ## 8. Commands
 
 ```

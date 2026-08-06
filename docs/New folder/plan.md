@@ -55,7 +55,7 @@ The library and the apps live in **one pnpm workspace**, as separate packages un
 pnpm-workspace.yaml    # workspace globs: src/lib, src/apps/*
 src/
   lib/                 # the library package — self-contained, no app state
-    core/              # tools: evented.ts, store.ts, freeze.ts, ids.ts
+    core/              # tools: evented.ts, store.ts, freeze.ts, ids.ts, slots.ts
     elements/          # UI elements (ui-button, ui-checkbox, ...)
     widgets/           # widgets + their local models (e.g. widgets/checkbox-tree/)
   apps/

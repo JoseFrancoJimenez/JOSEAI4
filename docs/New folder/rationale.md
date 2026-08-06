@@ -42,9 +42,23 @@ Commands throw, getters return empties: calling `add()` on an unconfigured widge
 
 Only bites when a property is set on an element before its class registers — which happens with async script loading. The own property shadows the accessor, so the setter never runs and the value is silently ignored. Three lines on connect, only for public setters that do work. Widgets are mostly immune because their input arrives through `setup()`.
 
-## No reading of light-DOM children
+## Slots by harvest, at connect
 
-The browser can upgrade an element before it has finished parsing that element's children, so `this.children` is unreliable at connect and the failure depends on script loading order. Shadow DOM solves this with `<slot>`; light DOM has no equivalent. Routing all content through `setup()`, properties, or attributes removes the timing question entirely rather than documenting a caveat around it.
+The original rule was to ban reading light-DOM children entirely, because the parser can upgrade an element before it has read that element's children. That ban was too strong. Module scripts are deferred by the HTML spec, so a definition registers after parsing finishes and elements upgrade with children complete — which holds for every component here, since they load as ES modules. The remaining exposure is a classic blocking script registering a definition mid-parse (preventable by convention, and warned about in dev) and children appended after the host is attached (unavoidable in any design, which is what `setSlot` exists for).
+
+Harvest sits in `connectedCallback` rather than in the render path. Deferring it until render would give widgets a slightly wider safety margin, but a widget waiting on `setup()` would leave the consumer's raw markup visible and unstyled in the meantime — `:not(:defined)` does not help, because the element is defined, just not ready. Emptying the host at connect avoids that, and keeps one rule for both kinds of component.
+
+`#harvested` is separate from `#rendered` because for a widget they become true at different moments. Both flags exist for the same underlying reason: a DOM move re-fires `connectedCallback`, and by then the host's children are the component's own skeleton — a second harvest would eat it.
+
+Strings enter as `textContent` and nodes are moved rather than serialized, so the "no consumer data in `html()`" rule survives slots intact. Defaults live inside the outlet in the skeleton, which means "supplied content replaces the outlet's children" needs no separate defaulting mechanism.
+
+The dev warning keys on `document.readyState === 'loading'` rather than on "harvested nothing". The spec sets readiness to `interactive` before deferred and module scripts run, so the check identifies the dangerous case directly and also catches partial harvests, which a child-count check would miss.
+
+## Library element before native element
+
+The earlier form of this rule was "prefer native", which was right about the reason and wrong about the target. Composing `ui-button` rather than a bare `<button>` means styling, states, and accessibility decisions are fixed in one place for every consumer. What keeps that safe is the matching obligation: a `ui-` element wraps the native element internally rather than reimplementing it, so composing the library element still gets the platform's keyboard, focus, and role behaviour. A `ui-` element painting a `<div>` where a native control exists breaks the chain, so it is defined as a bug in that element.
+
+The composite-widget exception is unchanged and now applies to library and native elements alike — the problem was never which element, it was any focus target inside a roving-tabindex item.
 
 ## Reflect never emits
 
@@ -69,10 +83,6 @@ Before the tag registers, the browser treats it as an unknown inline element and
 ## No RTL handling
 
 Only English and French ship, both left-to-right. Logical properties were considered and dropped as ceremony for a case that will not arise. If a right-to-left language is ever added, this is a mechanical CSS pass plus mirrored arrow keys in composite widgets — worth knowing, not worth pre-paying.
-
-## Native elements, with the composite exception
-
-A native `<button>` gives keyboard, focus, and role for free, so a single control should never be reimplemented. But inside a composite widget, a native focusable element creates a second tab order competing with the roving tabindex — the concrete bug that motivated the checkbox tree's design, where the fix was to make the checkbox state on the row rather than a control in it. Hence the rule is conditional, not "always native".
 
 ## `HTMLElement` only
 
