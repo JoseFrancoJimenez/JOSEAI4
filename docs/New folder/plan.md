@@ -6,7 +6,7 @@ How the pieces are divided and layered. `CLAUDE.md` holds the short rules and po
 
 The library is a set of **self-contained** front-end building blocks — **UI elements**, **widgets**, and **tools** (base store, event emitter) — consumed by multiple apps (some GIS, some not). The repo also hosts throwaway prototypes to test ideas. Nothing in the library may depend on app state; wiring to global state happens **around** a widget, never inside it (this applies to library widgets only, not to application widgets).
 
-Scope note: this file covers *what goes where and in how many layers*. Authoring mechanics (lifecycle, `setup()`, events, `html()`, CSS, accessibility, test recipes) live in the `web-components` skill. App state and store wiring live in `docs/store.md`.
+Scope note: this file covers *what goes where and in how many layers*. Authoring mechanics (lifecycle, `setup()`, content regions, events, `html()`, CSS, accessibility, test recipes) live in the `web-components` skill. App state and store wiring live in `docs/store.md`.
 
 ---
 
@@ -15,11 +15,11 @@ Scope note: this file covers *what goes where and in how many layers*. Authoring
 Distinguished by one question: **does it hold state and decide something, or does it only render what it's handed?**
 
 - **UI element (dumb)** — pure View. Contract is entirely **props-down / events-up**: a value comes in by property/attribute, a change goes out by `CustomEvent`. Remembers nothing, derives nothing, decides nothing. E.g. `ui-button`, `ui-checkbox`, `ui-slider`, `ui-toggle`.
-- **Widget (smart)** — has its own **internal state and/or logic**. E.g. a datepicker (visible month, selection, calendar rules), a tree/TOC (expanded set, tree structure).
+- **Widget (smart)** — has its own **internal state and/or logic**. E.g. a datepicker (visible month, selection, calendar rules), an autocomplete (query, filtering, highlighted match).
 
 **Classification test:** strip away all external input, then ask — *is there anything left to remember or decide?* Nothing → UI element. Something → widget. The name doesn't decide it: a date**picker** is a widget (selection + validation); a date**display** that only formats a passed-in date is a UI element.
 
-A widget typically **composes UI elements inside it**: the widget holds the intelligence; the leaf pieces that only paint are UI elements. Consumer-supplied content is passed in (e.g. a label string or a render callback), never hard-coded and never read from the widget's own light-DOM children.
+A widget typically **composes UI elements inside it**: the widget holds the intelligence; the leaf pieces that only paint are UI elements. Consumer-supplied content is passed in — through declared **content regions** for fixed areas, or a **render callback** for repeated per-item content (see the `web-components` skill) — never hard-coded.
 
 **Library widgets never touch a global store.** A widget with its own state uses **local** state (a small listener array, or its own `Evented` subclass). Connecting a widget to app state is an app-level concern — see `docs/store.md`.
 
@@ -35,7 +35,7 @@ A widget typically **composes UI elements inside it**: the widget holds the inte
 
 **The rule:** extract a layer when it **earns its place** — never preventively. **Testing is the tiebreaker:** if extracting makes non-trivial logic testable without a DOM, lean toward extracting; if the logic is trivial (formatting a value, holding one flag), don't — an empty pass-through layer is ceremony.
 
-**Add a Model** when there is **non-trivial domain logic** — rules that would be true with no UI at all (validation, calculations, constraints, tree/graph structure). A Model is pure and trivially unit-testable; that is a strong reason to separate it. A datepicker's calendar rules or a TOC's tree/cycle/depth logic belong in a Model. Incrementing a number does not.
+**Add a Model** when there is **non-trivial domain logic** — rules that would be true with no UI at all (validation, calculations, constraints, graph structure). A Model is pure and trivially unit-testable; that is a strong reason to separate it. A datepicker's calendar rules or an autocomplete's filtering rules belong in a Model. Incrementing a number does not.
 
 ## 3. Testing shape
 
@@ -55,9 +55,9 @@ The library and the apps live in **one pnpm workspace**, as separate packages un
 pnpm-workspace.yaml    # workspace globs: src/lib, src/apps/*
 src/
   lib/                 # the library package — self-contained, no app state
-    core/              # tools: evented.ts, store.ts, freeze.ts, ids.ts, slots.ts
+    core/              # tools: evented.ts, store.ts, freeze.ts, ids.ts, regions.ts
     elements/          # UI elements (ui-button, ui-checkbox, ...)
-    widgets/           # widgets + their local models (e.g. widgets/checkbox-tree/)
+    widgets/           # widgets + their local models (e.g. widgets/datepicker/)
   apps/
     <app>/             # an individual app (Vite) — imports the lib as a workspace dep
     sandbox/           # a throwaway app for testing ideas (disposable)

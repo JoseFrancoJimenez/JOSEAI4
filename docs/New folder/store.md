@@ -37,12 +37,12 @@ When an app needs a library widget driven by global state, **wrap it** in an app
 
 - **Composition, not inheritance.** Inheritance couples the app to the widget's internals. Rule: **compose to connect state; inherit only to specialize behavior.**
 - The wrapper **owns the domain model** and **derives it from the store**, injecting a **read-only view** into the widget.
-- **Single writer, guaranteed by types.** Split the model's surface into a readable interface (roots/get/iterate/subscribe) and a writable one (add/remove/move/clear). The widget receives the **readable** interface, so it cannot mutate domain. Only the wrapper holds the writable model.
+- **Single writer, guaranteed by types.** Split the model's surface into a readable interface (get/iterate/subscribe) and a writable one (add/remove/update/clear). The widget receives the **readable** interface, so it cannot mutate domain. Only the wrapper holds the writable model.
 - **Data flow:** `store → model` (the wrapper is the sole writer, reconciling from the store) and `view → store` (mirror view-state back; the store's `Object.is` guard breaks any echo).
 
 **Lifecycle — the wrapper is a custom element, so component rules apply too** (see the `web-components` skill). Two additions specific to store wiring:
 
-- **Do not read the store in a field initializer** (`#model = new Model(derive(store...))`). Field init runs at element **construction**, which can precede store population → an empty tree. Instead: **construct the model empty; populate it via the same sync path used for every later update.**
+- **Do not read the store in a field initializer** (`#model = new Model(derive(store...))`). Field init runs at element **construction**, which can precede store population → an empty model. Instead: **construct the model empty; populate it via the same sync path used for every later update.**
 - **Cover both orders with one mechanism:** `subscribeMany([...], sync, { immediate: true })`. `immediate` runs the sync once now (data already present at mount); the subscription fires on every later change (store populated after mount). Create the model **once**; (re)subscribe **per connect**; unsubscribe on teardown, matched one-to-one.
 
 Optionally hydrate view-state from the store on reconnect so it survives a DOM move.
@@ -50,12 +50,12 @@ Optionally hydrate view-state from the store on reconnect so it survives a DOM m
 ```ts
 // app wrapper — the ONLY place that knows a store exists
 connectedCallback() {
-  this.#unsub = store.subscribeMany(['checked'], () => {
-    this.#tree.setChecked(store.checkedLeafIds);      // store → widget: a command, which does not emit
+  this.#unsub = store.subscribeMany(['selection'], () => {
+    this.#list.setSelected(store.get('selection'));   // store → widget: a command, which does not emit
   }, { immediate: true });
 
-  this.#tree.addEventListener('widget-checkbox-tree:change', (e) => {
-    store.setChecked(e.detail.checkedLeafIds);        // widget → store: the wrapper is the sole writer
+  this.#list.addEventListener('widget-list:select', (e) => {
+    store.set('selection', e.detail.ids);             // widget → store: the wrapper is the sole writer
   }, { signal: this.#controller.signal });
 }
 ```

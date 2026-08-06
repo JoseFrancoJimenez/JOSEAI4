@@ -23,7 +23,7 @@ Rules live in exactly one of those. Where a rule must appear twice, the second c
 - Library code is **self-contained**: UI elements and widgets depend on **nothing** outside their own context — no global stores, no app services, no framework imports (The library can import from other libraries in specific case like a map adapter importing OpenLayers).
 - Dependencies point **app → library**, never the reverse.
 - **No Shadow DOM.** All custom elements render into **light DOM**.
-- Contract for every element/widget: **props-down / events-up**. Input by property/attribute; output by `CustomEvent`.
+- Contract for every element/widget: **props-down / events-up**. Input by property/attribute — and, for consumer content, declared **content regions** (see the skill). Output by `CustomEvent`.
 - The base `Store` is for **app-level global state**. Library widgets use their **own local state** — never the global `Store`.
 - **Testing is first-class.** Prefer architectures where logic is DOM-free and unit-testable.
 

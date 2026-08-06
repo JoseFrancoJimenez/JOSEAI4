@@ -20,8 +20,8 @@ If logic is hard to test because it needs a DOM, that is the signal to extract i
 One helper per test file:
 
 ```ts
-function mount(): FooElement {
-  const el = document.createElement('widget-foo');
+function mount(): DatepickerElement {
+  const el = document.createElement('widget-datepicker');
   document.body.append(el);
   return el;
 }
@@ -35,13 +35,13 @@ Importing the component module registers the tag; no manual `define` in tests.
 
 - Assert **attributes, roles, text content, and dispatched events**.
 - Never assert on an `innerHTML` string or a snapshot — it locks in incidental markup and breaks on every cosmetic change.
-- Never assert on computed layout (`getBoundingClientRect`, computed `display`, sizes). **jsdom performs no layout.** For a collapsed section, assert `aria-expanded="false"` or the class, not that it is invisible.
+- Never assert on computed layout (`getBoundingClientRect`, computed `display`, sizes). **jsdom performs no layout.** For a collapsed section, assert `aria-expanded="false"` or the class, not that it is invisible. For an unfilled outlet, assert it is empty — its hiding is CSS.
 
 ## 4. Events
 
 ```ts
 const events: CustomEvent[] = [];
-el.addEventListener('widget-foo:change', (e) => events.push(e as CustomEvent));
+el.addEventListener('widget-datepicker:change', (e) => events.push(e as CustomEvent));
 ```
 
 Assert count as well as payload. Two cases are worth an explicit test in every component that has commands:
@@ -54,8 +54,8 @@ Assert count as well as payload. Two cases are worth an explicit test in every c
 Use real events, dispatched at the element the user would actually hit:
 
 ```ts
-row.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+item.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 ```
 
 `bubbles: true` matters — the widget delegates at the container. Call `.focus()` for real focus assertions and assert on `document.activeElement`.
@@ -77,19 +77,21 @@ A move test asserts the opposite: remove, re-append, flush, and confirm nothing 
 
 - Readiness: before `setup()`, renders nothing and commands throw with a clear message; after `setup()`, renders.
 - `setup()` twice is a no-op.
-- Instantiated from HTML (`document.body.innerHTML = '<widget-foo …>'`) as well as programmatically.
+- Instantiated from HTML (`document.body.innerHTML = '<widget-datepicker …>'`) as well as programmatically.
 - Disconnect-then-reconnect (a move) preserves state and does not double-subscribe.
 - Getters before setup return safe empties.
-- Only the affected region changed, where a component makes targeted updates.
+- Only the affected region of the DOM changed, where a component makes targeted updates.
 
-For a component with slots:
+For a component with content regions:
 
-- HTML content lands in the right outlet: `document.body.innerHTML = '<ui-button><span slot="icon">★</span>Save</ui-button>'`, then assert per outlet.
-- `setSlot` works both before and after render, and overrides harvested markup.
-- A slot left unsupplied keeps the component's default; an outlet with neither is removed.
-- A string is inserted as text, not parsed — `setSlot('label', '<b>x</b>')` yields no `<b>` element.
-- A move (remove, re-append, flush a microtask) does not re-harvest: the rendered skeleton is still intact.
-- An unknown slot name is ignored without throwing.
+- `data-region` content lands in the matching outlet: `document.body.innerHTML = '<ui-button><span data-region="icon">★</span>Save</ui-button>'`, then assert per outlet.
+- A bare text child lands in the `default` outlet (harvest reads `childNodes`).
+- Whitespace-only text nodes are ignored — pretty-printed markup does not suppress the component's default.
+- `setContent` works before render (stashed) and after render (immediate), never throws, and overrides harvested content.
+- A region nobody supplied keeps the skeleton default; with neither, the outlet is empty.
+- A string is inserted as text, not parsed — `setContent('label', '<b>x</b>')` yields no `<b>` element.
+- A move (remove, re-append, flush a microtask) does not re-harvest: the rendered skeleton is intact.
+- An unknown region name is ignored without throwing.
 
 ## 8. Commands
 
