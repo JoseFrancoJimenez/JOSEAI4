@@ -2,6 +2,7 @@ import { TocModel, CheckboxTreeElement, type ICheckboxTreeChangeDetail } from "@
 import { people } from "./people.ts";
 import { familyDefs, allCheckable, leavesCheckable } from "./checkbox-people.ts";
 import { LitCheckboxTree } from "./lit-checkbox-tree/lit-checkbox-tree.ts";
+import "./webawesome-trees.ts";
 
 const model = new TocModel(people());
 
