@@ -144,7 +144,7 @@ export function createMapController(target: string | HTMLElement, configs: Layer
   const restyleSubscription = stores.layers.subscribe("variableByLayerId", (value, previous) => {
     restyleChangedVariables(registry, configs, previous, value);
   });
-  const viewport = wireViewport(map as unknown as ViewportMap, stores);
+  const viewport = wireViewport(map, stores);
 
   return {
     map,

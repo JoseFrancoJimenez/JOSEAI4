@@ -1,0 +1,37 @@
+app-legend {
+  display: block;
+}
+
+app-legend details + details {
+  margin-top: 0.5rem;
+}
+
+app-legend summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+app-legend .legend-body {
+  padding-left: 1.25rem;
+}
+
+app-legend .legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+app-legend .legend-symbol {
+  width: 1rem;
+  height: 1rem;
+  object-fit: contain;
+}
+
+app-legend .legend-swatch {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 2px;
+}

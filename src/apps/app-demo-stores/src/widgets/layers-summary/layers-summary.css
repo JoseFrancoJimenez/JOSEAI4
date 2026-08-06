@@ -1,0 +1,12 @@
+app-layers-summary {
+  display: block;
+}
+
+app-layers-summary section + section {
+  margin-top: 0.75rem;
+}
+
+app-layers-summary .empty {
+  color: gray;
+  font-style: italic;
+}

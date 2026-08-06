@@ -219,6 +219,11 @@ export default class Store<TState extends object> extends Evented<ChangeEvents<T
 
 TypeScript note: the template-literal mapped type may require the `as any` casts shown on `emit`. That's expected; keep them localized to those two lines.
 
+**Two behaviors below are required but not shown in the reference code above** — they were found necessary during hardening (before `app-demo-stores` existed) and confirmed load-bearing by it; the actual `src/lib/core/store.ts` implements both:
+
+- **`subscribeMany` must not fire after `remove()`.** A change schedules a `queueMicrotask` callback; without a `disposed` flag checked *inside* the microtask, a subscription removed between the change and the microtask running still fires — in a web component, that's a callback against an already-torn-down element after `disconnectedCallback`. `app-demo-stores`'s remount stress pass (Task 27) depends on this directly: every one of the app's seven widgets is detached and reattached, and none may receive a post-disconnect callback.
+- **Subscriber error isolation.** A throwing handler must not prevent sibling subscribers on the same key, or sibling keys in the same batch flush, from being notified. Wrap each handler invocation in try/catch and `console.error`; `Evented.emit`'s own `forEach` already aborts on a throw, so this can't be fixed there without modifying `Evented`.
+
 ---
 
 ## 6. Example — app-level domain stores (illustrative, NOT library code)
@@ -509,6 +514,8 @@ These pin the behaviors that are easy to get wrong. Include all of them.
 9. `subscribe({ immediate: true })` fires the callback synchronously with the current value.
 10. Dev freeze: with the dev guard active, mutating a value returned by `get()` **throws** (guards accidental mutation).
 11. `DataStore.run`: an earlier in-flight request whose response resolves *after* a later request does **not** overwrite state (stale-token guard).
+12. `subscribeMany`: change a key, call `remove()` on the subscription synchronously, then await a microtask — the callback must never run.
+13. A throwing subscriber does not prevent sibling subscribers on the same key, or sibling keys in the same batch flush, from being notified.
 
 ---
 
@@ -545,3 +552,73 @@ src/apps/<app>/
 ```
 
 Deliver strict TypeScript throughout, ESM modules. The **library core** has **no runtime dependencies**. GIS/map dependencies exist only in the app-level example, never in `src/lib`.
+
+---
+
+## 12. Findings from `app-demo-stores` (validation)
+
+`app-demo-stores` (`src/apps/app-demo-stores/`, `docs/tasks/store-tasks.md`) put this store under real
+pressure: an OpenLayers map, seven widgets, two independent wirings of the same widget code (one
+`AppStore` vs. three domain stores), and a shareable URL. What it confirmed, and the one real gap
+it found, follows — per Task 27's stress pass.
+
+**Confirmed — record as settled, not just illustration:**
+
+- **The two-wiring facade holds with zero adapter code.** `StoreLike<T>`'s methods are declared
+  with method syntax specifically so TypeScript's method bivariance makes `Store<AppState>`
+  assignable to `StoreLike<NarrowSlice>` — proven with a type-only spike *before* any widget was
+  written against it (see `state/facade.test-d.ts`). Both `createDomainStores` and
+  `createSingleStores` satisfy the exact same `AppStores` facade type with no cast, anywhere.
+- **Widget code really can be wiring-agnostic.** All seven widgets, plus the table's data helper,
+  contain zero conditionals on which wiring is active (Task 27 check 1) — grepped by an automated
+  test, not eyeballed.
+- **The three different echo-guard mechanisms this brief's app-level examples never needed are
+  all real, and each needs a genuinely different shape:** (a) content-comparison
+  compare-before-write for view-state mirrored back to the store (TOC/legend expansion — a
+  freshly built array never matches by `Object.is`); (b) an `applyingFromStore` flag *plus* a
+  numeric tolerance for a two-way binding against an external, float-drifting API (the map
+  viewport); (c) *no guard at all* where the reflection is structural (the checkbox tree's
+  `setChecked` reflects without emitting, so store -> view is already a dead end). Reaching for
+  the same guard shape in all three places would have been wrong in two of them.
+- **Nested `batch()` composes correctly across action-level abstractions**, not just raw `set`
+  calls in one function: the TOC's tree -> store write wraps two `setVisibleMany` calls (each a
+  single `set` internally) in one outer `stores.layers.batch(...)`, and it coalesces into exactly
+  one emission — confirmed by an explicit emit-count assertion, including at a stress scale of 20
+  layers in one group (Task 27 check 3).
+- **The async stale-response token pattern (§6.3) generalizes past GIS.** The table widget's
+  per-instance incrementing token, guarding a plain `fetch` against out-of-order responses, is
+  the identical shape as `DataStore.run`'s `#token` — confirms it as a general recipe, not an
+  artifact of the original GeoJSON example.
+- **"Restore before wiring" really does remove the need for cross-store batching.** The shared
+  composition root (`composeApp.ts`) resolves the full initial state — config defaults merged
+  with a decoded share link — *before* any store or widget exists. Nothing is subscribed yet, so
+  there is nothing to coalesce across stores. No `batchAcross` helper was needed anywhere in the
+  app.
+- **Config objects never enter a store, confirmed structurally, not just by convention.** Every
+  place a config-derived value enters state derives a small new plain value (`{ id, visible }`
+  for a layer; a `string` for an active variable id) — never the config object itself. Dev-freeze
+  therefore never touches (and never corrupts) the shared config module singleton, verified with
+  an explicit mutation-after-seed test (Task 27 check 7).
+- **Heavy data really does stay out of state, even for a widget with real async rows.** The
+  table's fetched feature rows live only in a per-widget-instance `Map` cache; `getAll()` on
+  every slice holds only ids and light metadata throughout, including after paging through every
+  layer (Task 27 check 6) — the same rule §6.3's `resultIds`-not-`FeatureCollection` illustrates,
+  now proven under a real (if minimal) fetch.
+
+**A real gap found, unrelated to the store tool itself:** `src/lib/maps/data/{arcgisDataSource,
+wfsDataSource}.ts` — a sibling lib module the store-tasks plan pointed the table widget at — only
+accepts `source.kind: 'wfs' | 'arcgis'` (a live, server-paginated backend). This app's actual
+layer configs carry `source.type: 'geojson' | 'esrijson'`, pointing at static files, a shape
+those classes don't accept at all. The table widget could not reuse them and instead implements
+its own minimal static-file fetch + client-side pagination (`widgets/table/rows.ts`) — this is
+not a case of "do not reimplement paging that they already do," since no paging exists anywhere
+for this data shape. Flagged here, not filed as a store-tool defect, because it isn't one.
+
+**A test-authoring gotcha worth naming explicitly**, since it caused repeated, identical mistakes
+across many widget tests before the pattern was recognized: `subscribeMany`'s microtask
+coalescing means *every* test asserting a side effect of a `subscribeMany`-driven reaction needs
+an explicit `await Promise.resolve()` (or, when the reaction itself chains further promises — the
+table's `fetch`/`.json()`/`.then()` — a macrotask flush) between the triggering store write and
+the assertion. A plain `subscribe()`-driven reaction needs neither; it fires synchronously. Get
+this wrong and the test fails not because the code is broken, but because the assertion ran one
+tick too early.

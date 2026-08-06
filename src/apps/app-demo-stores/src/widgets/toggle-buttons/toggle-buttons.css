@@ -1,0 +1,13 @@
+app-toggle-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+app-toggle-buttons button {
+  cursor: pointer;
+}
+
+app-toggle-buttons button[aria-pressed="true"] {
+  font-weight: bold;
+}

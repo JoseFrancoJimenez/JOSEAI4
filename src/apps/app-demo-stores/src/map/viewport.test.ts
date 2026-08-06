@@ -108,7 +108,9 @@ describe("wireViewport", () => {
 
     expect(setViewSpy).not.toHaveBeenCalled();
   });
+});
 
+describe("wireViewport — teardown", () => {
   it("destroy() removes both the store subscriptions and the moveend listener", () => {
     const stores = createDomainStores([]);
     const fake = fakeMap(fromLonLat(DEFAULT_CENTER), DEFAULT_ZOOM);
