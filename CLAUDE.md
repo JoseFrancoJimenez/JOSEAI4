@@ -4,7 +4,7 @@ A library of **self-contained** UI elements, widgets, and tools reused across mu
 
 **Guiding principle: be pragmatic — no over-engineering.** Build the minimum that works. Add structure, layers, or abstraction only when a concrete, present need forces it — never speculatively. Be pragmatic but not careless. Deliver good quality code that is easy to read, easy to understand, easy to maintain, and easy to test.
 
-**Stack:** **pnpm** monorepo, **Vite** + **TypeScript**, **vanilla** Web Components / custom elements. **No UI frameworks** (no React, Vue, Svelte), no JSX. No runtime dependencies in library code beyond what a task explicitly requires.
+**Stack:** **pnpm** monorepo, **Vite** + **TypeScript**, **vanilla** Web Components / custom elements. **No UI frameworks** (no React, Vue, Svelte), no JSX. No runtime dependencies in library code beyond what a task explicitly requires (like a map adapter in the lib using OpenLayers).
 
 **Layout:** monorepo — the library lives in `src/lib`, apps in `src/apps/<app>`. Apps depend on the library as a workspace package (`app → lib` only). See `plan.md` §6.
 
@@ -36,7 +36,6 @@ This file is **guidance, not enforcement**. The hard invariants below are also e
 - Pattern is **MVVM**. Add layers (ViewModel, Model) **by complexity, never preventively**. Extract a ViewModel (a plain, DOM-free class) only when presentation logic is non-trivial and needs testing without a DOM.
 - **Testing is first-class.** Prefer architectures where logic is DOM-free and unit-testable.
 - **Single writer** for any shared model, enforced by a **read-only interface** at injection.
-- **Never add origin/source filtering** to state notifications (it breaks unidirectional flow).
 
 ## Commands
 
