@@ -4,47 +4,87 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ui-button demo</title>
+    <style>
+      .columns {
+        display: flex;
+        align-items: flex-start;
+        gap: 48px;
+      }
+      .column {
+        flex: 1;
+        min-width: 0;
+      }
+    </style>
   </head>
   <body>
-    <h2>Label only</h2>
-    <ui-button label="Save"></ui-button>
+    <div class="columns">
+      <div class="column">
+        <h1>HTML-authored</h1>
 
-    <h2>Icon only (aria-label) — font icon</h2>
-    <ui-button icon="fa-solid fa-star" aria-label="Favourite"></ui-button>
+        <h2>Label only</h2>
+        <ui-button label="Save"></ui-button>
 
-    <h2>Icon only (aria-label) — SVG icon</h2>
-    <ui-button aria-label="Favourite">
-      <svg data-region="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-        <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.9-6.2 3.9 1.6-7-5.4-4.7 7.1-.6z" />
-      </svg>
-    </ui-button>
+        <h2>Icon only (aria-label) — font icon</h2>
+        <ui-button icon="fa-solid fa-star" aria-label="Favourite"></ui-button>
 
-    <h2>Attribute-only (label + icon)</h2>
-    <ui-button label="Save" icon="fa-solid fa-floppy-disk"></ui-button>
+        <h2>Icon only (aria-label) — SVG icon</h2>
+        <ui-button aria-label="Favourite">
+          <svg data-region="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.9-6.2 3.9 1.6-7-5.4-4.7 7.1-.6z" />
+          </svg>
+        </ui-button>
 
-    <h2>Region-only (icon + label both harvested)</h2>
-    <ui-button><span data-region="icon">★</span>Save via region</ui-button>
+        <h2>Attribute-only (label + icon)</h2>
+        <ui-button label="Save" icon="fa-solid fa-floppy-disk"></ui-button>
 
-    <h2>Both together (label attribute + icon region)</h2>
-    <ui-button label="Save"><span data-region="icon">★</span></ui-button>
+        <h2>Region-only (icon + label both harvested)</h2>
+        <ui-button><span data-region="icon">★</span>Save via region</ui-button>
 
-    <h2>Disabled</h2>
-    <ui-button label="Save" disabled></ui-button>
+        <h2>Both together (label attribute + icon region)</h2>
+        <ui-button label="Save"><span data-region="icon">★</span></ui-button>
 
-    <h2>Icon position — start (default)</h2>
-    <ui-button label="Save" icon="fa-solid fa-star" icon-position="start"></ui-button>
+        <h2>Disabled</h2>
+        <ui-button label="Save" disabled></ui-button>
 
-    <h2>Icon position — end</h2>
-    <ui-button label="Save" icon="fa-solid fa-star" icon-position="end"></ui-button>
+        <h2>Icon position — start (default)</h2>
+        <ui-button label="Save" icon="fa-solid fa-star" icon-position="start"></ui-button>
 
-    <h2>Programmatic setContent on a timer</h2>
-    <ui-button id="set-content-demo" icon="fa-solid fa-spinner" aria-label="Loading"></ui-button>
+        <h2>Icon position — end</h2>
+        <ui-button label="Save" icon="fa-solid fa-star" icon-position="end"></ui-button>
 
-    <h2>type="submit" inside a form</h2>
-    <form id="demo-form">
-      <ui-button type="submit" label="Submit"></ui-button>
-      <p id="form-status"></p>
-    </form>
+        <h2>Programmatic setContent on a timer</h2>
+        <ui-button id="set-content-demo" icon="fa-solid fa-spinner" aria-label="Loading"></ui-button>
+
+        <h2>type="submit" inside a form</h2>
+        <form id="demo-form">
+          <ui-button type="submit" label="Submit"></ui-button>
+          <p id="form-status"></p>
+        </form>
+      </div>
+
+      <div class="column">
+        <h1>Created from JS</h1>
+
+        <h2>Properties set before mount</h2>
+        <div id="js-props"></div>
+
+        <h2>setContent (SVG icon) before mount</h2>
+        <div id="js-set-content"></div>
+
+        <h2>Click listener added after creation</h2>
+        <div id="js-click"></div>
+        <p id="js-click-status"></p>
+
+        <h2>Mounted empty, label + icon set after mount (2s)</h2>
+        <div id="js-post-mount-content"></div>
+
+        <h2>Mounted with icon at "start", position set to "end" after mount (2.5s)</h2>
+        <div id="js-post-mount-position"></div>
+
+        <h2>Mounted enabled, disabled set after mount (3s)</h2>
+        <div id="js-post-mount-disabled"></div>
+      </div>
+    </div>
 
     <script type="module" src="/src/ui-button.ts"></script>
   </body>
