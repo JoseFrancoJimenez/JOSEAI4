@@ -1,5 +1,6 @@
 // AWESOME AI
 
+import './ui-button.css';
 import { fillRegion, harvestRegions } from '../../core/regions.ts';
 import type { HarvestedRegions, RegionContent } from '../../core/regions.ts';
 import { cls, regionNames } from './ui-button-dom.ts';
@@ -9,6 +10,8 @@ type UiButtonType = 'button' | 'submit' | 'reset';
 type UiButtonIconPosition = 'start' | 'end';
 
 const UPGRADE_PROPS = ['label', 'icon', 'iconPosition', 'type', 'disabled'] as const;
+
+const DEV: boolean = import.meta.env.DEV;
 
 /**
  * `<ui-button>` — APG pattern: Button.
@@ -139,6 +142,8 @@ class UiButtonElement extends HTMLElement {
     this.#applyPendingContent();
 
     this.#rendered = true;
+
+    if (DEV) this.#scheduleAccessibleNameCheck();
   }
 
   #html(): string {
@@ -177,6 +182,18 @@ class UiButtonElement extends HTMLElement {
 
     const labelledby = this.getAttribute('aria-labelledby');
     if (labelledby !== null) this.#controlEl.setAttribute('aria-labelledby', labelledby);
+  }
+
+  /**
+   * Dev-only: one microtask after render, flags an icon-only button with no accessible name.
+   * Deferred so a `setContent('default', …)` called right after connect isn't a false positive.
+   */
+  #scheduleAccessibleNameCheck(): void {
+    queueMicrotask(() => {
+      if (this.#labelOutlet.childNodes.length > 0) return;
+      if (this.#controlEl.hasAttribute('aria-label') || this.#controlEl.hasAttribute('aria-labelledby')) return;
+      console.error(`${this.tagName.toLowerCase()}: icon-only button has no accessible name — set "label", "aria-label", or "aria-labelledby".`);
+    });
   }
 
   #outletFor(region: UiButtonRegion): HTMLElement | null {

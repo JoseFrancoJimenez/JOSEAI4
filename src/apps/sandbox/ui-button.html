@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ui-button demo</title>
+  </head>
+  <body>
+    <h2>Attribute-only (label + icon)</h2>
+    <ui-button label="Save" icon="fa-solid fa-floppy-disk"></ui-button>
+
+    <h2>Region-only (icon + label both harvested)</h2>
+    <ui-button><span data-region="icon">★</span>Save via region</ui-button>
+
+    <h2>Both together (label attribute + icon region)</h2>
+    <ui-button label="Save"><span data-region="icon">★</span></ui-button>
+
+    <h2>Icon-only with aria-label</h2>
+    <ui-button icon="fa-solid fa-star" aria-label="Favourite"></ui-button>
+
+    <h2>Disabled</h2>
+    <ui-button label="Save" disabled></ui-button>
+
+    <h2>Icon position — start (default)</h2>
+    <ui-button label="Save" icon="fa-solid fa-star" icon-position="start"></ui-button>
+
+    <h2>Icon position — end</h2>
+    <ui-button label="Save" icon="fa-solid fa-star" icon-position="end"></ui-button>
+
+    <h2>Programmatic setContent on a timer</h2>
+    <ui-button id="set-content-demo" icon="fa-solid fa-spinner" aria-label="Loading"></ui-button>
+
+    <h2>type="submit" inside a form</h2>
+    <form id="demo-form">
+      <ui-button type="submit" label="Submit"></ui-button>
+      <p id="form-status"></p>
+    </form>
+
+    <script type="module" src="/src/ui-button.ts"></script>
+  </body>
+</html>

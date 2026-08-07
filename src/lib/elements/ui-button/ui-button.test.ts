@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import './ui-button.ts';
 import type { UiButtonElement } from './ui-button.ts';
 
@@ -228,5 +228,40 @@ describe('accessibility and focus', () => {
     control(el).click();
 
     expect(submitCount).toBe(1);
+  });
+});
+
+describe('icon-only accessible-name check (dev)', () => {
+  it('warns when an icon-only button has no accessible name', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button icon="fa-solid fa-star"></ui-button>');
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledOnce();
+    spy.mockRestore();
+  });
+
+  it('does not warn when an icon-only button has an aria-label', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button icon="fa-solid fa-star" aria-label="Favourite"></ui-button>');
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('does not warn when a label is present', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button icon="fa-solid fa-star" label="Save"></ui-button>');
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('does not warn when setContent fills the default region right after connect', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const el = mount('<ui-button icon="fa-solid fa-star"></ui-button>');
+    el.setContent('default', 'Save');
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
