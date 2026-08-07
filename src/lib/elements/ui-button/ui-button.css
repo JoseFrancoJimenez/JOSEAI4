@@ -1,16 +1,14 @@
-ui-button {
-  display: inline-block;
-}
-
 ui-button:not(:defined) {
   visibility: hidden;
 }
 
-ui-button [data-outlet]:empty {
-  display: none;
-}
+.ui-button {
+  display: inline-block;
 
-ui-button {
+  [data-outlet]:empty {
+    display: none;
+  }
+
   .ui-button__control {
     display: inline-flex;
     align-items: center;

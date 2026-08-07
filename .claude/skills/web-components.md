@@ -223,7 +223,7 @@ Static skeletons come from an `html()` method returning a string.
 - **Class names are never hardcoded in JS.** A frozen `cls` object in `<name>-dom.ts` is the only JS-side source:
 
 ```ts
-export const cls = { control: 'ui-button__control', icon: 'ui-button__icon', label: 'ui-button__label' } as const;
+export const cls = { host: 'ui-button', control: 'ui-button__control', icon: 'ui-button__icon', label: 'ui-button__label' } as const;
 ```
 
 The literal string appears in exactly two places in the repo: the `.css` file and this map. `cls` is **internal** — do not export it from `index.ts`.
@@ -235,10 +235,30 @@ The literal string appears in exactly two places in the repo: the `.css` file an
 ui-button:not(:defined) { visibility: hidden; }
 ```
 
+- **Give the host a root class matching its tag**, added via `classList.add(cls.host)` in `connectedCallback` (idempotent — harmless to re-add on a DOM move). Select the host and its descendants by that class everywhere else, never by the tag name. A tag selector (`ui-button { ... }`) is lost the moment the component is inherited under a different tag; a class selector survives because the base class still adds it on connect. The one exception is the pre-upgrade rule above — it must stay tag-based, since the class does not exist until `connectedCallback` runs.
+
+```ts
+// <name>-dom.ts
+const cls = { host: 'ui-button', control: 'ui-button__control', /* … */ } as const;
+
+// <name>.ts
+connectedCallback() {
+  this.classList.add(cls.host);
+  // …
+}
+```
+
+```css
+.ui-button {
+  display: inline-block;
+  /* …descendant rules nested inside… */
+}
+```
+
 - **Hide empty outlets** so an unfilled region takes no space:
 
 ```css
-ui-button [data-outlet]:empty { display: none; }
+.ui-button [data-outlet]:empty { display: none; }
 ```
 
 - **State comes from attributes, not JS-toggled inline styles.** Style from `[aria-expanded="false"]`, `[data-state="mixed"]`, or a modifier class.

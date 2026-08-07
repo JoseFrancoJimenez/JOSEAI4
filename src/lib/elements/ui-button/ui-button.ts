@@ -75,6 +75,7 @@ class UiButtonElement extends HTMLElement {
   }
 
   connectedCallback(): void {
+    this.classList.add(cls.host);
     for (const prop of UPGRADE_PROPS) this.#upgradeProperty(prop);
 
     if (!this.#harvested) {

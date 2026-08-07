@@ -2,10 +2,13 @@
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
   },
-  "model": "opusplan",
   "permissions": {
     "allow": [
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(tee /tmp/test-out.log)",
+      "Bash(pnpm --filter @mini/lib test -- ui-button)",
+      "Read(//tmp/**)"
     ]
-  }
+  },
+  "model": "opusplan"
 }
