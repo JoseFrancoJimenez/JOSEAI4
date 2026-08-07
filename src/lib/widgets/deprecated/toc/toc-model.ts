@@ -1,4 +1,4 @@
-import Evented from '../../core/evented.ts';
+import Evented from '../../../core/evented.ts';
 import type { ITocNodeDef, ITocNode, ITocModelEvents, ITocModelWritable } from './toc.types.ts';
 
 class TocNode implements ITocNode {

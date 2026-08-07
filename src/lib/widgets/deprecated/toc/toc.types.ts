@@ -1,4 +1,4 @@
-import type { Subscription } from '../../core/evented.ts';
+import type { Subscription } from '../../../core/evented.ts';
 
 /** Raw config shape — one item from the flat input array. */
 interface ITocNodeDef {

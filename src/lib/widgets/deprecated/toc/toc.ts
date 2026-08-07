@@ -3,7 +3,7 @@ import { tocCss, collectElementsByName } from './toc-dom.ts';
 import { TocNodeElement, createTocNode } from './toc-node.ts';
 import type { ITocNodeToggleDetail } from './toc-node.ts';
 import type { ITocNode, ITocModelReadable } from './toc.types.ts';
-import type { Subscription } from '../../core/evented.ts';
+import type { Subscription } from '../../../core/evented.ts';
 
 /**
  * `detail` payload of the {@link TocComponent.events.clickToggle} event — the single
