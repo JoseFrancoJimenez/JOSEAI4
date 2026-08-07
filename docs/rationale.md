@@ -4,6 +4,27 @@ For me, not for the agent. `SKILL.md` states the rules; this explains the reason
 
 **Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively.** This was the tiebreaker for nearly every decision below.
 
+## No Shadow DOM
+
+The rule is stated in `CLAUDE.md` and the skill; this is why, and what would change it.
+
+Shadow DOM would genuinely solve four things: style encapsulation, live non-destructive slots (strictly better than harvest at the job harvest exists to do), private internals a consumer cannot wipe with `innerHTML`, and `delegatesFocus` in place of hand-written focus delegation. Those are real, and the slot advantage in particular deletes a mechanism I had to design carefully.
+
+They are outweighed here by four costs, of which the third is decisive:
+
+1. **Forms break.** A `<button type="submit">` inside a shadow root does not submit the outer form. Recovering it means `formAssociated` plus `ElementInternals` — machinery for something the platform currently gives free.
+2. **Cross-root id references do not resolve.** `aria-labelledby="page-heading"` from the consumer cannot reach an element inside the root. ARIA element reflection fixes it, but it is newer and less obvious, and it lands precisely on the accessibility rules that already do the most work.
+3. **Global CSS cannot reach inside — and ours is functional, not cosmetic.** Font Awesome and OpenLayers stylesheets are load-bearing: `icon="fa-solid fa-star"` builds an `<i>` internally, and inside a shadow root that renders blank until the sheet is adopted into every root. A per-component chore, forever, for a benefit this repo does not need.
+4. Consumers lose ordinary CSS override; everything must go through custom properties or `::part`, designed up front. Tests grow a `.shadowRoot` hop.
+
+What makes the trade acceptable is the shape of the consumers. I control the apps; nothing external queries into component DOM; apps do not need to restyle beyond custom properties. So encapsulation is defending against a threat that does not exist here, while the platform friction is paid every day.
+
+What we accept in exchange is the unguarded host: children appended after connect render unmanaged, and a consumer's `innerHTML` can orphan cached references. That is a discipline problem, and discipline is affordable at this size. It is documented (skill §7.1) rather than guarded, because the guard is a `MutationObserver` and that is on the anti-pattern list until a concrete bug earns it.
+
+**What would flip this:** publishing outside the team, or the first real collision between an app's CSS and a component's, or the first time something reaches into a component's DOM. The migration is survivable by design — the public contract is the tag, attributes, properties, custom properties, and events, none of which change. `cls` is deliberately internal for exactly this reason. Two habits keep the door open: apps never query or style component internals, and region names stay compatible with what a `slot` name could be.
+
+Considered and left as a maybe: light DOM for `ui-` elements, shadow for widgets. Coherent — leaves are where forms and ARIA hurt most, widgets are where encapsulation pays — but two authoring models in one library is a real cost, and no widget has yet demonstrated the need.
+
 ## Classification and prefixes
 
 `ui-` vs `widget-` makes the dumb/smart split visible in the markup, so a review can spot a UI element that has quietly grown state. A widget's own dumb sub-elements (a row, a cell) are UI elements even though only that widget uses them — dumbness is about the contract, not about reuse.
@@ -52,7 +73,7 @@ Only bites when a property is set on an element before its class registers — w
 
 The mechanism is harvest-and-replace, and it differs from Shadow-DOM slots in two ways that the platform name would paper over: supplied nodes are *moved* into the skeleton rather than projected (ownership transfers; the consumer's markup is no longer where they wrote it), and capture is *one-time* (no live reassignment, no `slotchange`). Calling them slots would import expectations the mechanism does not meet. "Content region" describes what it actually is: a named, fixed area a consumer can fill.
 
-The consumer attribute is `data-region` rather than a bare `region` or `content-region` attribute because `data-*` is the valid way to put custom attributes on arbitrary elements. The outlet marker is a distinct attribute (`data-outlet`) so consumer markup and skeleton markup can never be confused, in code or in tests.
+The consumer attribute is `data-region` rather than a bare `region` or `content-region` attribute because `data-*` is the valid way to put custom attributes on arbitrary elements. The outlet marker is a distinct attribute (`data-outlet`) so consumer markup and skeleton markup can never be confused, in code or in tests. The two names are also deliberately kept short and slot-shaped, so a future migration to Shadow DOM is a rename rather than a redesign.
 
 ### Why harvest lives at connect
 
@@ -70,7 +91,19 @@ A literal "latest wins" breaks in one ordering: `setContent` called before the h
 
 An earlier draft solved this by ranking channels (explicit `setContent` always beating harvested markup). That worked but meant two rules, and it made a plain `setAttribute` after a region assignment feel arbitrary — the consumer said "make the label this" and would have been ignored.
 
-Treating harvest as the **first** write, whenever it physically runs, gives the same protection with one rule: it represents what was written in the markup, which logically precedes any code. Everything after it is ordinary last-writer-wins, whatever channel it came from — attribute, property, or `setContent`. Nothing is lost, because harvest happens once and late children are not captured anyway.
+Treating harvest as the **first** write, whenever it physically runs, gives the same protection with one rule for orderings *in time*: it represents what was written in the markup, which logically precedes any code. Everything after it is ordinary last-writer-wins, whatever channel it came from.
+
+One case it does not settle, and I over-claimed when I first wrote this down: a **convenience attribute that writes into an outlet** (`label="Save"` filling the label region) and a harvested region for the same outlet arrive in the same markup at the same instant, so "first" cannot separate them. The tiebreak is specificity — the region wins, because writing a child element is the more deliberate act. That is a second rule, small and only applicable at first render, and it is honest to say so rather than pretend one rule covers everything.
+
+### Why a name no outlet claims is an error
+
+Harvest moves content out of the host before anything knows whether an outlet wants it. If nothing claims the name, the fragment is dropped and the skeleton is written over the emptied host: the content is **destroyed with no trace**. A typo (`data-region="lable"`) and content aimed at a component that has no regions both land here.
+
+The warning lives in the helper rather than in each component's fill step, so it is written once and a component cannot reintroduce the hole by forgetting it. That is what the optional `accepted` argument to `harvestRegions` is for — dev-only in effect, and worth one parameter because the bug it catches is invisible by construction.
+
+### Why repeated region names merge
+
+Two children with the same `data-region` both move into that region's fragment, in document order. Last-one-wins would discard markup the consumer wrote, which is the same silent-loss failure as above. Throwing would make a cosmetic mistake fatal. Merging is also not a special case: it is the identical append that already collects several unnamed children into `default`.
 
 ### Why the default region is named `default`
 
@@ -92,6 +125,22 @@ A custom element harvested into a region genuinely disconnects, and for a widget
 
 Keys on `document.readyState === 'loading'` rather than "harvested nothing", because the spec sets readiness to `interactive` before deferred and module scripts run — so the check identifies the dangerous case (a definition registered mid-parse by a blocking script) directly, and also catches partial harvests, which a child-count check would miss. It lives in the shared helper, written once.
 
+### Why regions are opt-in
+
+The first draft assumed a region wherever a consumer might supply something. That is backwards. A region is the right shape only for content the component cannot express itself — arbitrary markup in a fixed area, a header, an empty-state. Where the content is a **string or a class name**, an attribute says it better: shorter to write, reflectable, observable, and free of harvest, precedence, and a `setContent` surface. Proving the region mechanism works is a reason to write a prototype, not a reason to ship an API.
+
+So a component declares regions only when it needs them, and the ones that do not are simpler for it: no harvest, no `#harvested` flag, no first-render precedence question, no stash.
+
+The cost is that the most natural markup a consumer will try — children between the tags — is then silently deleted at render, since the skeleton write empties the host. That is the worst of the three fates in §7.1 and the only one the helper cannot warn about, because a component with no regions never calls the helper. Hence the obligation on the component instead: if it takes no children, it says so in dev, at connect, before writing the skeleton.
+
+### Keeping a tool ahead of its consumer
+
+The region helper currently has no consumer. The component it was built for dropped its regions, and nothing else has needed one yet.
+
+Deleting it would be the literal reading of the pragmatic rule, and it is the wrong call here. The rule targets *speculative abstraction* — layers invented for imagined futures. This is a finished, specified, test-pinned mechanism whose hard parts (timing, precedence, teardown of a harvested custom element) were worked out against a real component. Throwing that away means rebuilding it worse later, under time pressure, having forgotten why the edges are where they are.
+
+That is an exception, and it is taken with eyes open rather than by drift. It comes with a trigger: if the helper is still unused when the third component ships, the judgement was wrong and it should go.
+
 ## Library element before native element
 
 The earlier form of this rule was "prefer native", which was right about the reason and wrong about the target. Composing `ui-button` rather than a bare `<button>` means styling, states, and accessibility decisions are fixed in one place for every consumer. What keeps that safe is the matching obligation: a `ui-` element wraps the native element internally rather than reimplementing it, so composing the library element still gets the platform's keyboard, focus, and role behaviour. A `ui-` element painting a `<div>` where a native control exists breaks the chain, so it is defined as a bug in that element.
@@ -110,6 +159,12 @@ A `CustomEvent` is still right for anything native events do not express: a sema
 
 The invariant that makes a component wireable to anything. If a state-setting command emitted, a store listening to the component and feeding it back would loop. The tempting fix — tagging events with their origin and filtering — breaks one-way data flow and is forbidden in `docs/store.md`. The structural fix costs nothing: commands are called by someone who already knows, so they have nothing to announce.
 
+## Forwarded ARIA attributes are observed
+
+`aria-label` on a non-focusable host is not announced, so it is copied to the inner control. Doing that only at first render made a later `setAttribute('aria-label', …)` a silent no-op — while the component's own dev error was telling consumers to set exactly that attribute. Observing the two attributes costs two entries in `observedAttributes` and keeps the HTML and JS paths symmetric, which is the stated reason `observedAttributes` exists at all.
+
+The mirror of this: an attribute the component does *not* react to should not be observed. An attribute whose entire effect is a CSS attribute selector needs no callback — observing it is ceremony that implies a behaviour the component does not have. Leave it out, with a comment, so the absence reads as a decision rather than an oversight.
+
 ## `html()` static only
 
 Interpolating consumer data into an HTML string is an XSS hole and an escaping bug waiting to happen. Setting the skeleton once and then writing `textContent` is both safe and faster, and it means the skeleton is a constant that can be read at a glance.
@@ -119,6 +174,12 @@ Interpolating consumer data into an HTML string is an XSS hole and an escaping b
 The map exists so a class name can be renamed in two places (the `.css` file and the map) rather than hunted through the JS. It stays internal because exporting it makes every class name a public API that cannot be renamed without a breaking change. Apps that need to restyle get custom properties (the intended surface) and the tag plus ARIA attributes (public anyway, since they are the accessibility contract).
 
 The block is the full tag name, prefix included, because class names are global in light DOM: `.button` or `.day` will eventually collide with app CSS, `.ui-button__icon` cannot. The earlier convention (tag without prefix) had exactly that collision built in.
+
+## The focus ring is a shared token
+
+Two tiers of custom property were already the rule: shared `--ui-*` tokens for what must look identical across components, per-component knobs named after the tag for the rest. The focus ring is the clearest possible case for tier one — a ring that differs between a button and a listbox is a bug.
+
+The temptation is to hardcode it in the first component that needs one, on the grounds that a token file is over-engineering for a single consumer. That reasoning smuggles in a false premise: a shared token is a **name plus a fallback**, not a file. `var(--ui-focus-ring, 2px solid …)` costs nothing more than the literal it replaces, works before any theme exists, and is the only thing that makes the ring consistent once a second component appears. Deciding a shared value per component is how a design system stops being one.
 
 ## CSS imported by the component
 
@@ -140,8 +201,15 @@ Extending built-ins (`is="..."`) is unavailable in Safari, so it is out on compa
 
 Considered and cut: surgical-versus-rebuild is a per-component judgement, and stating it as a rule would push small dumb elements toward complexity they do not need. The two absolutes that came out of it — no `setTimeout` to wait for the DOM, no `MutationObserver` without a concrete need — survive in the anti-pattern list, because both are workarounds for a design problem rather than solutions.
 
+The stray-child problem is the live test of that second absolute. A `MutationObserver` on the host would catch children appended after connect, which is a real hole. It stays unbuilt because no bug has been caused by it yet, and because the same discipline is enforceable by documentation at this team size. If it is ever built, it is dev-only.
+
+## The `AWESOME AI` first line
+
+A read-receipt, not a runtime concern. Its presence at the top of a component file says the file was written against the skill rather than from memory — the same job the "first words" rule does for a session, in a place that survives into the diff. It cost me a false-positive review comment once (flagged as leftover cruft by something that had not read §14), which is evidence it works: an unexplained marker invites deletion, so the skill now says what it is for.
+
 ## Rules that were deliberately left out
 
 - **No id → element registry.** True and important in the widget plan where it arose, but it is implementation detail of that widget, not a general authoring rule. The general form (do not keep a JS mirror of what the DOM holds authoritatively) is covered by the anti-patterns.
 - **Compose rather than inherit to connect state.** Belongs to app wrappers; lives in `docs/store.md` §4.
 - **No origin/source filtering.** Belongs to the store; lives in `docs/store.md` §2. The component-level consequence is the reflect-never-emits rule, which is in the skill.
+- **Type-checking harvested children.** Restricting a region to certain element types was considered and dropped: the failure is rare, self-evident when it happens, and it would add per-component configuration to a helper that is currently pleasantly dumb. The one case where child type genuinely matters — composite widget items — is already closed structurally by taking strings.

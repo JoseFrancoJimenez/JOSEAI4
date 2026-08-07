@@ -2,11 +2,11 @@
 
 How the pieces are divided and layered. `CLAUDE.md` holds the short rules and points here for detail. This file is read on demand — when a task needs it.
 
-**Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively. Pragmatic is not careless: the code must be easy to read, easy to understand, easy to maintain, easy to scalate and easy to test.**
+**Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively. Pragmatic is not careless: the code must be easy to read, easy to understand, easy to maintain, easy to scale and easy to test.**
 
-The library is a set of **self-contained** front-end building blocks — **UI elements**, **widgets**, and **tools** (base store, event emitter) — consumed by multiple apps (some GIS, some not). The repo also hosts throwaway prototypes to test ideas. Nothing in the library may depend on app state; wiring to global state happens **around** a widget, never inside it (this applies to library widgets only, not to application widgets)..
+The library is a set of **self-contained** front-end building blocks — **UI elements**, **widgets**, and **tools** (base store, event emitter, region helper) — consumed by multiple apps (some GIS, some not). The repo also hosts throwaway prototypes to test ideas. Nothing in the library may depend on app state; wiring to global state happens **around** a widget, never inside it (this applies to library widgets only, not to application widgets).
 
-Scope note: this file covers *what goes where and in how many layers*. Authoring mechanics (lifecycle, `setup()`, content regions, events, `html()`, CSS, accessibility, test recipes) live in the `web-components` skill. App state and store wiring live in `docs/store.md`.
+Scope note: this file covers *what goes where and in how many layers*. Authoring mechanics (lifecycle, `setup()`, content regions, events, `html()`, CSS, accessibility, test recipes) live in the `web-components` skill. App state and store wiring live in `docs/store.md`; the region helper's own spec lives in `docs/regions.md`.
 
 ---
 
@@ -19,7 +19,7 @@ Distinguished by one question: **does it hold state and decide something, or doe
 
 **Classification test:** strip away all external input, then ask — *is there anything left to remember or decide?* Nothing → UI element. Something → widget. The name doesn't decide it: a date**picker** is a widget (selection + validation); a date**display** that only formats a passed-in date is a UI element.
 
-A widget typically **composes UI elements inside it**: the widget holds the intelligence; the leaf pieces that only paint are UI elements. Consumer-supplied content is passed in — through declared **content regions** for fixed areas, or a **render callback** for repeated per-item content (see the `web-components` skill) — never hard-coded.
+A widget typically **composes UI elements inside it**: the widget holds the intelligence; the leaf pieces that only paint are UI elements. Consumer-supplied content is passed in — through declared **content regions** for fixed areas, or a **render callback** for repeated per-item content (see the `web-components` skill) — never hard-coded. Regions are opt-in: an element configurable by attributes alone declares none.
 
 **Library widgets never touch a global store.** A widget with its own state uses **local** state (a small listener array, or its own `Evented` subclass). Connecting a widget to app state is an app-level concern — see `docs/store.md`.
 
@@ -43,7 +43,7 @@ Target a **pyramid**, and prefer designs that make one possible:
 
 - **Base (many, fast, no DOM):** domain **Models** and **ViewModels** — plain classes, instantiated and asserted directly. Push logic here; this is where testing is cheap.
 - **Middle (fewer, with DOM):** **widgets and elements** as custom elements — mounted, driven, asserted on rendered output and dispatched events.
-- **Tool:** the base **store** — its behaviours are pinned once, in its own suite (`docs/store.md`).
+- **Tools:** the base **store** and the **region helper** — their behaviours are pinned once, each in its own suite (`docs/store.md`, `docs/regions.md`).
 
 If a piece of logic is hard to test because it needs a DOM, that is the signal to extract it into a plain class — not to write a heavier test. Mechanics (mount helpers, what to assert, jsdom limits) are in the `web-components` skill, `testing.md`.
 
@@ -64,6 +64,7 @@ src/
 docs/
   plan.md              # this file
   store.md             # the store: usage, rules, and wiring a widget to it
+  regions.md           # the content-region helper: surface, rules, dev warnings
   <widget>-plan.md     # per-widget specs and task breakdowns
 CLAUDE.md              # short rules (auto-loaded)
 .claude/skills/
@@ -74,4 +75,5 @@ human.md               # operator guide (not for the agent)
 - Tests co-located as `*.test.ts` next to source.
 - `src/lib` holds **only** self-contained library code. The base `Store` is a library tool; **concrete domain stores and app-level wrappers live in an app under `src/apps/`**, never in `src/lib`.
 - Apps import the library as a **workspace package** (e.g. `import { Store } from '@<scope>/lib/core'`), never by a relative path into `src/lib`. Dependency points **app → lib** only.
+- Apps consume a component through its **public contract only** — tag, attributes, properties, custom properties, events. Never query into a component's internal DOM, never style its internal class names. This is what keeps the light-DOM decision reversible (`rationale.md`).
 - Keep experiment apps (e.g. `src/apps/sandbox`) disposable — one folder per idea.

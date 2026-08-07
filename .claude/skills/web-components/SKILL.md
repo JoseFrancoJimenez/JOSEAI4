@@ -9,8 +9,9 @@ Mechanics for building components in this repo. Architecture (MVVM, layering, re
 
 Companions, read when relevant:
 
-- `accessibility.md` — required before writing any interactive component.
-- `testing.md` — required before writing tests.
+- `docs/accessibility.md` — required before writing any interactive component.
+- `docs/testing.md` — required before writing tests.
+- `docs/regions.md` — the region helper's own spec, required before building a component that accepts consumer content.
 
 **Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively.**
 
@@ -73,13 +74,22 @@ Importing the module makes the tag work — that is what allows declaring it in 
 - **`connectedCallback` is idempotent.** It runs again on every DOM move. Guard harvesting, rendering, and subscription so a move does not repeat them.
 
 ```ts
+// A widget with regions — the fullest case. Drop the lines that do not apply.
 connectedCallback() {
+  this.classList.add(cls.host);
   this.#upgradeProperties();
-  if (!this.#harvested) { this.#regions = harvestRegions(this); this.#harvested = true; }
-  this.#subscribe();
-  this.#renderIfReady();
+  if (!this.#harvested) {                                  // regions only
+    this.#regions = harvestRegions(this, regionNames);     // regionNames from <name>-dom.ts
+    this.#harvested = true;
+  }
+  this.#subscribe();                                       // only if it subscribes to anything
+  this.#renderIfReady();                                   // #render() for a UI element — no gate
 }
 ```
+
+Not every line applies to every component. A UI element with no regions and no subscriptions is just `classList.add`, `#upgradeProperties()`, `#render()`. Harvest appears only in a component that declares regions (§7); `#renderIfReady()` only in a widget with a `setup()` gate (§5).
+
+Order matters and is fixed: **property upgrade, then harvest, then render.** Harvest must precede any write to the host's children — it is the first thing that touches the DOM, not the first statement in the method.
 
 `#harvested` and `#rendered` are **separate flags** — for a widget they become true at different moments.
 
@@ -133,9 +143,10 @@ UI elements have no `setup()`. They render immediately with safe defaults and ac
 ## 6. Props down
 
 - **Properties for rich data** — objects, arrays, callbacks, nodes. Properties are the primary API.
-- **Attributes for scalars** — strings, numbers, booleans. Add `observedAttributes` only when the component must react to an outside change.
+- **Attributes for scalars** — strings, numbers, booleans. Add `observedAttributes` only when the component must react to an outside change. An attribute styled entirely by CSS is not observed; note the omission in a comment so it does not read as an oversight.
 - **Never accept a function, class instance, or DOM node through an attribute.**
 - **Consumer content is a third channel** — content regions, §7.
+- **A public ARIA attribute on the host is an input too.** Where the host forwards `aria-label` / `aria-labelledby` to an inner control, observe them — forwarding once at render leaves a later `setAttribute` silently doing nothing.
 - **Upgrade public properties on connect.** A property set before the class registers becomes an own property that shadows the accessor, so the setter never runs:
 
 ```ts
@@ -153,6 +164,8 @@ Call it in `connectedCallback` for every public property with a setter that does
 
 A **content region** is a named, fixed area of a component that a consumer can fill — an icon, a label, a header, an empty-state message. Fillable from HTML and from code; both paths feed the same fill step, so the component behaves identically either way.
 
+**Regions are opt-in.** A component that takes no consumer content declares none, does not call `harvestRegions`, and is simpler for it — see §7.1 for what it owes the consumer instead. The helper's own spec, including its dev warnings and the merge rule for repeated names, is `docs/regions.md`.
+
 **These are not Shadow-DOM slots**, and differ from them in two honest ways: supplied nodes are **moved** into the component's skeleton (not projected — ownership effectively transfers), and capture is **one-time** (children added to the host later are not picked up; use `setContent`).
 
 **Scope:** regions are for **fixed, singular areas declared in the skeleton**. Repeated per-item content — rows, list items, options — is **not** a region job: it goes through a render callback passed via `setup()` or a property. In composite widgets, per-item content is **strings only**, never nodes (`accessibility.md` §5).
@@ -160,16 +173,16 @@ A **content region** is a named, fixed area of a component that a consumer can f
 **Consumer side, HTML** — `data-region="<name>"` on a direct child; children without it (bare text included) form the `default` region:
 
 ```html
-<ui-button>
-  <span data-region="icon">★</span>
-  Save
-</ui-button>
+<widget-panel>
+  <span data-region="header">Layers</span>
+  Nothing selected
+</widget-panel>
 ```
 
 **Consumer side, code** — rich data, so a method, never an attribute:
 
 ```ts
-button.setContent('icon', iconNode);            // Node, DocumentFragment, or string
+panel.setContent('header', headerNode);         // Node, DocumentFragment, or string
 datepicker.setup({ content: { footer: 'Week starts Monday' } });
 ```
 
@@ -177,26 +190,42 @@ datepicker.setup({ content: { footer: 'Week starts Monday' } });
 
 ```ts
 html(): string {
-  return `<button type="button" class="${cls.control}">
-    <span class="${cls.icon}" data-outlet="icon" aria-hidden="true"></span>
-    <span class="${cls.label}" data-outlet="default"></span>
-  </button>`;
+  return `<section class="${cls.panel}">
+    <h2 class="${cls.header}" data-outlet="header"></h2>
+    <div class="${cls.body}" data-outlet="default"></div>
+  </section>`;
 }
 ```
 
 Rules:
 
-- **Harvest once, in `connectedCallback`, before anything else** (§4), with the shared `harvestRegions` helper from `src/lib/core/`. It empties the host immediately, so consumer markup is never visible unstyled — which matters for a widget that will not render until `setup()`. The `#harvested` flag prevents a second harvest on a DOM move from swallowing the component's own skeleton.
+- **Harvest once, in `connectedCallback`, before anything writes to the host** (§4), with the shared `harvestRegions` helper from `src/lib/core/`, passing the component's declared region names. It empties the host immediately, so consumer markup is never visible unstyled — which matters for a widget that will not render until `setup()`. The `#harvested` flag prevents a second harvest on a DOM move from swallowing the component's own skeleton.
 - **Harvest iterates `childNodes`, not `children`** — bare text like `Save` must survive — and **skips whitespace-only text nodes**, so pretty-printed HTML does not fill the `default` region and suppress the component's default.
-- **Precedence: the latest write to an outlet wins, and harvest always counts as the first write** — whenever it physically runs, it represents what was in the markup, which logically preceded any code. So `setContent` called before the host is attached still beats the harvest that follows it, and one rule covers every ordering.
-- **Fill:** supplied content replaces the outlet's children; a region nobody supplied keeps the default written in the skeleton; an outlet with neither is left **empty and hidden by CSS** (§10) — never removed, so a later `setContent` still has a target.
+- **Timing.** Harvest sees children present in the initial HTML parse (module scripts are deferred, §3), in an `innerHTML` assignment, in a cloned `<template>`, and when children are appended *before* the host is attached. For anything later, see §7.1.
+- **Precedence, in two parts.** Within a channel it is last-writer-wins, and **harvest always counts as the first write** — whenever it physically runs, it represents what was in the markup, which logically preceded any code. So `setContent` called before the host is attached still beats the harvest that follows it. The part that rule does not settle is a **convenience attribute** (a `label` that writes into an outlet) competing with a harvested region for the same outlet at first render, since both arrive in the same markup at the same moment: **the harvested region wins**, as the more specific of the two. After first render there is no ambiguity — latest write wins, whatever the channel.
+- **Fill:** supplied content replaces the outlet's children; a region nobody supplied keeps the default written in the skeleton; an outlet with neither is left **empty and hidden by CSS** (§10) — never removed, so a later `setContent` still has a target. Clearing a region after render is `setContent(name, '')`; there is no `unfill`.
 - **Write empty outlets with zero content** — `<span data-outlet="icon"></span>`, no inner whitespace — or `:empty` will not match.
 - **Strings enter as text** (`textContent`), never parsed as HTML. Nodes are **moved**, never serialized. Consumer data never reaches `html()`.
 - **`setContent` is input provisioning, not a command:** it never throws and is exempt from `#assertReady`. Before render it stashes; at fill time the stash applies; after render it applies immediately.
-- **Declare the region names** a component accepts in `<name>-dom.ts` alongside `cls`, and export their type from `index.ts`. Unknown region names are ignored, not an error.
+- **Declare the region names** a component accepts in `<name>-dom.ts` alongside `cls`, and export their type from `index.ts`. An unknown name passed to `setContent` is ignored, not an error; an unknown name arriving through **harvest** is a dev-time error, because that content is silently destroyed (`docs/regions.md` §5).
 - **A custom element placed in a region must survive a full teardown.** Harvest detaches it; for a widget host it can stay detached until `setup()` arrives, so its disconnect microtask fires and legitimately tears it down; the fill step reattaches it and its connect runs again. The lifecycle rules in §4 (idempotent connect, symmetric teardown) are exactly what make this safe — a region component must not assume it stays attached.
-- **Timing.** Harvest sees children present in the initial HTML parse (module scripts are deferred, §3), in an `innerHTML` assignment, in a cloned `<template>`, and when children are appended *before* the host is attached. It does **not** see children appended after the host is attached — use `setContent` there. The shared helper warns in dev when an element upgrades while `document.readyState === 'loading'`, which means a classic blocking script registered the definition mid-parse.
 - **Region content is presentation, never semantics.** The component owns roles, state, and the accessible name; the consumer supplies what is displayed. See `accessibility.md` §5.
+
+### 7.1 What happens to consumer children
+
+Light DOM means the host's children are a shared, unguarded surface. Three outcomes, none of them "ignored":
+
+| When | Fate |
+|---|---|
+| Present at first connect | Harvested and moved into the skeleton |
+| Harvested into a region no outlet claims, **or supplied to a component with no regions** | Destroyed — the host is emptied and the skeleton written over it |
+| Appended **after** first connect | Never harvested, never overwritten — renders as an unmanaged sibling of the skeleton |
+
+Consequences for an author:
+
+- **After connect, content changes go through properties or `setContent`, never by appending children.** State this in the component's docs; do not guard it with a `MutationObserver` (§12) until a concrete bug earns one.
+- **A component that accepts no children should say so in dev.** At connect, before writing the skeleton, `console.error` if the host has non-whitespace children. Silent deletion of the most natural markup a consumer will try is the worst of the three fates, and it is the one with no warning built into the helper.
+- A consumer assigning `host.innerHTML` after render wipes the skeleton and orphans the component's cached element references. Same convention covers it; no guard.
 
 ## 8. Events up
 
@@ -263,7 +292,7 @@ connectedCallback() {
 
 - **State comes from attributes, not JS-toggled inline styles.** Style from `[aria-expanded="false"]`, `[data-state="mixed"]`, or a modifier class.
 - **Do not style region content beyond layout.** The outlet controls placement, size, and spacing; typography and colour of consumer-supplied nodes are the consumer's business.
-- **Theming is the public styling API**, in two tiers: shared tokens `--ui-*` (e.g. `--ui-focus-ring`), per-component knobs named after the tag (e.g. `--widget-datepicker-cell-size`). Give every knob a fallback.
+- **Theming is the public styling API**, in two tiers: shared tokens `--ui-*` (e.g. `--ui-focus-ring`), per-component knobs named after the tag (e.g. `--widget-datepicker-cell-size`). Give every knob a fallback. A component never hardcodes a value a shared token already covers.
 - Keep specificity low (`:where()` where useful) so apps can override. No `!important`.
 - Scope with `>` where a parent's state must not restyle descendants.
 
@@ -283,10 +312,12 @@ What makes step 1 safe: **a library element is itself built on the native elemen
 
 ## 12. Do not
 
-- No Shadow DOM. No UI framework, no JSX, no runtime dependency a task did not explicitly require.
+- **No Shadow DOM.** Decided on purpose, with named costs and a named condition for revisiting — `rationale.md`. Do not reach for it to solve a styling collision or a stray-child bug; those have cheaper answers here.
+- No UI framework, no JSX, no runtime dependency a task did not explicitly require.
 - No global store, app service, or cross-widget import inside `src/lib`.
 - No consumer data interpolated into `html()`; no consumer string parsed as HTML.
 - No re-harvesting regions after the first connect.
+- No appending children to a host after connect — properties or `setContent` (§7.1).
 - No per-item nodes in composite widgets — strings via callback only.
 - No listeners on a dumb element — the owning widget delegates at the container.
 - No `setTimeout` to "wait for" the DOM; no `MutationObserver` unless a concrete need forces it.
@@ -301,6 +332,12 @@ What makes step 1 safe: **a library element is itself built on the native elemen
 - Accessibility checklist in `accessibility.md` walked, for anything interactive.
 - Code and comments in English.
 
-## 14. First lines.
- All web-components must beging with the following comment:
- `AWESOME AI`.
+## 14. First line
+
+Every component file begins with this comment, and nothing above it:
+
+```ts
+// AWESOME AI
+```
+
+It is a read-receipt for this skill: its presence in a diff says the file was written against these rules rather than from memory. It carries no runtime meaning.

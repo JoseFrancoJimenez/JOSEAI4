@@ -73,6 +73,8 @@ await Promise.resolve();
 
 A move test asserts the opposite: remove, re-append, flush, and confirm nothing was torn down.
 
+A dev-only check deferred by a microtask (an accessible-name check, say) is tested the same way: act, `await Promise.resolve()`, then assert on a `console.error` spy.
+
 ## 7. Cases worth a test in most components
 
 - Readiness: before `setup()`, renders nothing and commands throw with a clear message; after `setup()`, renders.
@@ -81,17 +83,26 @@ A move test asserts the opposite: remove, re-append, flush, and confirm nothing 
 - Disconnect-then-reconnect (a move) preserves state and does not double-subscribe.
 - Getters before setup return safe empties.
 - Only the affected region of the DOM changed, where a component makes targeted updates.
+- Each reflecting property: property in → attribute out, attribute in → property out, and **clearing** — removing the attribute or setting the property empty leaves the DOM and the getter agreeing.
 
 For a component with content regions:
 
-- `data-region` content lands in the matching outlet: `document.body.innerHTML = '<ui-button><span data-region="icon">★</span>Save</ui-button>'`, then assert per outlet.
+- `data-region` content lands in the matching outlet: `document.body.innerHTML = '<widget-panel><span data-region="header">Layers</span>Empty</widget-panel>'`, then assert per outlet.
 - A bare text child lands in the `default` outlet (harvest reads `childNodes`).
 - Whitespace-only text nodes are ignored — pretty-printed markup does not suppress the component's default.
+- Two children with the same `data-region` both land, in document order.
+- A `data-region` name the component does not declare produces a dev error — the content is destroyed, so the warning is the only evidence.
 - `setContent` works before render (stashed) and after render (immediate), never throws, and overrides harvested content.
+- `setContent(name, '')` clears a filled outlet.
 - A region nobody supplied keeps the skeleton default; with neither, the outlet is empty.
 - A string is inserted as text, not parsed — `setContent('label', '<b>x</b>')` yields no `<b>` element.
 - A move (remove, re-append, flush a microtask) does not re-harvest: the rendered skeleton is intact.
-- An unknown region name is ignored without throwing.
+- An unknown region name passed to `setContent` is ignored without throwing.
+
+For a component with **no** content regions:
+
+- Children supplied in markup produce a dev error. They are deleted at render, so as above the warning is the only evidence the consumer gets.
+- Whitespace-only children do not trigger it — pretty-printed markup is not a mistake.
 
 ## 8. Commands
 
