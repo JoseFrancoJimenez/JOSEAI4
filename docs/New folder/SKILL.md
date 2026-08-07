@@ -188,7 +188,7 @@ Rules:
 
 - **Harvest once, in `connectedCallback`, before anything else** (§4), with the shared `harvestRegions` helper from `src/lib/core/`. It empties the host immediately, so consumer markup is never visible unstyled — which matters for a widget that will not render until `setup()`. The `#harvested` flag prevents a second harvest on a DOM move from swallowing the component's own skeleton.
 - **Harvest iterates `childNodes`, not `children`** — bare text like `Save` must survive — and **skips whitespace-only text nodes**, so pretty-printed HTML does not fill the `default` region and suppress the component's default.
-- **Precedence:** harvested content is the initial fill; `setContent` **overrides** harvested content whenever it is called; among `setContent` calls, the latest wins.
+- **Precedence: the latest write to an outlet wins, and harvest always counts as the first write** — whenever it physically runs, it represents what was in the markup, which logically preceded any code. So `setContent` called before the host is attached still beats the harvest that follows it, and one rule covers every ordering.
 - **Fill:** supplied content replaces the outlet's children; a region nobody supplied keeps the default written in the skeleton; an outlet with neither is left **empty and hidden by CSS** (§10) — never removed, so a later `setContent` still has a target.
 - **Write empty outlets with zero content** — `<span data-outlet="icon"></span>`, no inner whitespace — or `:empty` will not match.
 - **Strings enter as text** (`textContent`), never parsed as HTML. Nodes are **moved**, never serialized. Consumer data never reaches `html()`.
@@ -200,6 +200,7 @@ Rules:
 
 ## 8. Events up
 
+- **Do not invent an event the platform already provides.** With no Shadow DOM, a native event from an inner control (`click`, `input`, `change`) bubbles out of the host, and consumers listen on the host directly. Re-dispatching it as a `CustomEvent` double-fires every handler. Emit a `CustomEvent` only for something native events do not express — a semantic change, a composite selection, a multi-step result.
 - Name `<tag>:<verb>`, `bubbles: true`. No Shadow DOM, so `composed` is irrelevant — omit it.
 - `detail` is plain serializable data. No class instances, no DOM nodes, no functions.
 - **Reflecting state never emits; only a user gesture emits.** A command that sets state (`setSelected`, `setValue`) updates and repaints silently — its caller already knows. A click or keypress emits. This is what makes a component safe to wire to anything without echo loops.

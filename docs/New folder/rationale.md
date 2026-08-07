@@ -64,9 +64,13 @@ Harvest reads `childNodes` (bare text must survive — `Save` in a button is a t
 
 Removal broke late `setContent` — the outlet was gone, so there was nowhere to put the content — and fixing that meant keeping detached references and re-inserting them: machinery. Keeping the outlet and hiding it with `:empty` costs one CSS line and keeps a permanent target. The accessibility work removal was doing is done by `aria-hidden` on decorative outlets; an empty, unlabeled span surfaces nowhere. The price is a discipline: empty outlets are written with zero inner whitespace, or `:empty` does not match.
 
-### Why explicit beats harvested
+### Why harvest counts as the first write
 
-"Last writer wins" sounded simple but contradicts itself when `setContent` runs before the host is attached and harvest runs after — later in time is the harvest, more explicit is the call. Precedence by *kind* (explicit `setContent` over harvested markup, latest among explicit calls) is unambiguous in every ordering.
+A literal "latest wins" breaks in one ordering: `setContent` called before the host is attached, then harvest running when the browser attaches it. The harvest is later in time, but the consumer never chose that moment — it is the browser's schedule, not theirs.
+
+An earlier draft solved this by ranking channels (explicit `setContent` always beating harvested markup). That worked but meant two rules, and it made a plain `setAttribute` after a region assignment feel arbitrary — the consumer said "make the label this" and would have been ignored.
+
+Treating harvest as the **first** write, whenever it physically runs, gives the same protection with one rule: it represents what was written in the markup, which logically precedes any code. Everything after it is ordinary last-writer-wins, whatever channel it came from — attribute, property, or `setContent`. Nothing is lost, because harvest happens once and late children are not captured anyway.
 
 ### Why the default region is named `default`
 
@@ -93,6 +97,14 @@ Keys on `document.readyState === 'loading'` rather than "harvested nothing", bec
 The earlier form of this rule was "prefer native", which was right about the reason and wrong about the target. Composing `ui-button` rather than a bare `<button>` means styling, states, and accessibility decisions are fixed in one place for every consumer. What keeps that safe is the matching obligation: a `ui-` element wraps the native element internally rather than reimplementing it, so composing the library element still gets the platform's keyboard, focus, and role behaviour. A `ui-` element painting a `<div>` where a native control exists breaks the chain, so it is defined as a bug in that element.
 
 The composite-widget exception applies to library and native elements alike — the problem was never which element, it was any focus target inside a roving-tabindex item. The rule was originally motivated by a concrete bug: a native checkbox inside a roving-tabindex row created a second, competing tab order.
+
+## Native events over custom ones
+
+The events-up rule was originally written as "output by `CustomEvent`", which a button quietly contradicts: its inner `<button>` already produces a `click` that bubbles out of the host, because there is no shadow boundary to stop it. Re-dispatching that as `ui-button:click` would double-fire every handler and buy nothing.
+
+So the rule now reads: a `CustomEvent` **or** a native event that already bubbles out of the host, never both for the same interaction. The "never both" clause is the load-bearing part — the failure mode is not choosing wrong, it is emitting twice.
+
+A `CustomEvent` is still right for anything native events do not express: a semantic change (`change` with a domain payload), a composite selection, a multi-step result.
 
 ## Reflect never emits
 

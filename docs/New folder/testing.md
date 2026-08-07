@@ -9,7 +9,7 @@ Vitest + jsdom. Tests are co-located as `*.test.ts` next to the source. Run and 
 | Layer | How | What to assert |
 |---|---|---|
 | Pure model / ViewModel | Instantiate, no DOM | Rules, edge cases, empty input. Fast and exhaustive — this is the big win, put the effort here. |
-| UI element | Mount, set props, interact | Property in → rendered output. Interaction → correct `CustomEvent` with the right `detail`. |
+| UI element | Mount, set props, interact | Property in → rendered output. Interaction → the right event on the host, with the right `detail` where it is a `CustomEvent`. |
 | Widget | Mount, drive through its public API | Readiness gate, commands, delegated keyboard/pointer, emitted events, ARIA after every operation. |
 | App wrapper | Fake model / fake store | The wiring in both directions, nothing else. |
 
@@ -44,7 +44,7 @@ const events: CustomEvent[] = [];
 el.addEventListener('widget-datepicker:change', (e) => events.push(e as CustomEvent));
 ```
 
-Assert count as well as payload. Two cases are worth an explicit test in every component that has commands:
+Assert count as well as payload. For a component whose output is a native bubbling event, assert it reaches the host and that nothing re-dispatches it (one handler call, not two). Two cases are worth an explicit test in every component that both emits and has commands:
 
 - A user gesture **emits**.
 - A state-setting command **does not emit**.

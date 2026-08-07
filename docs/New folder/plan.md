@@ -4,7 +4,7 @@ How the pieces are divided and layered. `CLAUDE.md` holds the short rules and po
 
 **Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively. Pragmatic is not careless: the code must be easy to read, easy to understand, easy to maintain, easy to scalate and easy to test.**
 
-The library is a set of **self-contained** front-end building blocks — **UI elements**, **widgets**, and **tools** (base store, event emitter) — consumed by multiple apps (some GIS, some not). The repo also hosts throwaway prototypes to test ideas. Nothing in the library may depend on app state; wiring to global state happens **around** a widget, never inside it (this applies to library widgets only, not to application widgets).
+The library is a set of **self-contained** front-end building blocks — **UI elements**, **widgets**, and **tools** (base store, event emitter) — consumed by multiple apps (some GIS, some not). The repo also hosts throwaway prototypes to test ideas. Nothing in the library may depend on app state; wiring to global state happens **around** a widget, never inside it (this applies to library widgets only, not to application widgets)..
 
 Scope note: this file covers *what goes where and in how many layers*. Authoring mechanics (lifecycle, `setup()`, content regions, events, `html()`, CSS, accessibility, test recipes) live in the `web-components` skill. App state and store wiring live in `docs/store.md`.
 
@@ -14,7 +14,7 @@ Scope note: this file covers *what goes where and in how many layers*. Authoring
 
 Distinguished by one question: **does it hold state and decide something, or does it only render what it's handed?**
 
-- **UI element (dumb)** — pure View. Contract is entirely **props-down / events-up**: a value comes in by property/attribute, a change goes out by `CustomEvent`. Remembers nothing, derives nothing, decides nothing. E.g. `ui-button`, `ui-checkbox`, `ui-slider`, `ui-toggle`.
+- **UI element (dumb)** — pure View. Contract is entirely **props-down / events-up**: a value comes in by property/attribute, a change goes out by an event — a native one where the platform already provides it, otherwise a `CustomEvent`. Remembers nothing, derives nothing, decides nothing. E.g. `ui-button`, `ui-checkbox`, `ui-slider`, `ui-toggle`.
 - **Widget (smart)** — has its own **internal state and/or logic**. E.g. a datepicker (visible month, selection, calendar rules), an autocomplete (query, filtering, highlighted match).
 
 **Classification test:** strip away all external input, then ask — *is there anything left to remember or decide?* Nothing → UI element. Something → widget. The name doesn't decide it: a date**picker** is a widget (selection + validation); a date**display** that only formats a passed-in date is a UI element.
