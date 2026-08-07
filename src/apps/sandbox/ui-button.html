@@ -6,6 +6,19 @@
     <title>ui-button demo</title>
   </head>
   <body>
+    <h2>Label only</h2>
+    <ui-button label="Save"></ui-button>
+
+    <h2>Icon only (aria-label) — font icon</h2>
+    <ui-button icon="fa-solid fa-star" aria-label="Favourite"></ui-button>
+
+    <h2>Icon only (aria-label) — SVG icon</h2>
+    <ui-button aria-label="Favourite">
+      <svg data-region="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.9-6.2 3.9 1.6-7-5.4-4.7 7.1-.6z" />
+      </svg>
+    </ui-button>
+
     <h2>Attribute-only (label + icon)</h2>
     <ui-button label="Save" icon="fa-solid fa-floppy-disk"></ui-button>
 
@@ -14,9 +27,6 @@
 
     <h2>Both together (label attribute + icon region)</h2>
     <ui-button label="Save"><span data-region="icon">★</span></ui-button>
-
-    <h2>Icon-only with aria-label</h2>
-    <ui-button icon="fa-solid fa-star" aria-label="Favourite"></ui-button>
 
     <h2>Disabled</h2>
     <ui-button label="Save" disabled></ui-button>

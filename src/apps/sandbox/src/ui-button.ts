@@ -1,5 +1,6 @@
 import type { UiButtonElement } from "@mini/lib/elements";
 import "@mini/lib/elements";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const setContentDemo = document.getElementById("set-content-demo") as UiButtonElement;
 setTimeout(() => {
