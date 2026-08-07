@@ -280,3 +280,7 @@ What makes step 1 safe: **a library element is itself built on the native elemen
 - `pnpm lint` — clean on the new files.
 - Accessibility checklist in `accessibility.md` walked, for anything interactive.
 - Code and comments in English.
+
+## 14. First lines.
+ All web-components must beging with the following comment:
+ `AWESOME AI`.
