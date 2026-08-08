@@ -199,9 +199,45 @@ Extending built-ins (`is="..."`) is unavailable in Safari, so it is out on compa
 
 ## No update-discipline section
 
-Considered and cut: surgical-versus-rebuild is a per-component judgement, and stating it as a rule would push small dumb elements toward complexity they do not need. The two absolutes that came out of it — no `setTimeout` to wait for the DOM, no `MutationObserver` without a concrete need — survive in the anti-pattern list, because both are workarounds for a design problem rather than solutions.
+Considered and cut: surgical-versus-rebuild is a per-component judgement, and stating it as a rule would push small dumb elements toward complexity they do not need. One absolute came out of it and survives — no `setTimeout` to wait for the DOM, which is always a workaround for an ordering problem that has a real answer.
 
-The stray-child problem is the live test of that second absolute. A `MutationObserver` on the host would catch children appended after connect, which is a real hole. It stays unbuilt because no bug has been caused by it yet, and because the same discipline is enforceable by documentation at this team size. If it is ever built, it is dev-only.
+## `MutationObserver` is a tool, not an anti-pattern
+
+It was originally listed beside `setTimeout` as banned-without-a-concrete-need, and that was overreach. The two are not alike: `setTimeout` guesses at timing, while a `MutationObserver` observes something that genuinely happened. What made the ban feel right was the case that prompted it — using one to police children a consumer should not have been adding, which is a design problem wearing a detection costume.
+
+The honest rule is narrower: **do not observe what an explicit channel already tells you.** A property, a command, or an observed attribute is cheaper, synchronous, and typed. But a component that must react to DOM it does not control has no such channel, and a container whose consumer adds or removes children at runtime is exactly that. Forbidding the observer there would push the design toward a worse answer — a manual `refresh()` the consumer has to remember, which is the "one more thing to forget" the no-`destroy()` rule already rejects.
+
+So: allowed, with a comment saying why, and with the narrowest config that does the job.
+
+The stray-child problem stays unguarded regardless. An observer would catch children appended after connect, but no bug has been caused by it yet and documentation is enforceable at this team size. That is a judgement about need, no longer about permission.
+
+## Toggle state lives on the button, not in a subclass
+
+An exclusive-selection group needs its buttons to carry pressed state. Two shapes were considered: a `pressed` property on the existing button, or a `ui-toggle-button` inheriting from it.
+
+Inheritance is not forbidden here — the standing rule is compose to connect state, inherit to specialize behaviour, and a toggle is a specialization. It loses on cost. Custom elements have no inheritance of definitions, so a subclass means a second tag, a second file, a second entry in the tag-name map, and either duplicated CSS or a host carrying two class names. The parent's element references are `#private`, so the subclass cannot reach the inner control without a protected getter — which contradicts the deliberate decision not to expose one. And the render is guarded by a `#rendered` flag, so the subclass needs a lifecycle hook and an ordering contract between parent and child.
+
+That is a lot of surface for one boolean and one ARIA attribute. The rule against a base class with one consumer applies in mirror: a subclass that only adds a field is the same premature abstraction seen from below. There is also a consumer cost — a second tag forces the choice at markup-writing time, where an attribute lets the same element become a toggle later without a rewrite.
+
+Inheritance stays available for a toggle that genuinely diverges: different skeleton, different keyboard model, different event. This one does not diverge.
+
+## Why the host cannot simply take the role
+
+The recurring suggestion is to put `role="button"` on the host and skip forwarding ARIA inward. It does not work, and the reason is worth keeping written down because the idea returns.
+
+A role on the host does not replace the inner native control — it wraps it. A screen reader then finds a button containing a button, announces twice, and a containing widget's item count doubles. Making the host usable would need `tabindex="0"`, which creates a second tab stop, which forces `tabindex="-1"` on the inner control, at which point Enter and Space, `disabled`, and form submission all stop working and must be reimplemented. That is the definition of the bug in the composition rule: painting a control where a native one exists.
+
+The genuine alternative is the opposite — no inner control, the host *is* the button — and it costs exactly the platform behaviour listed above. It is the right answer only when no native element fits. So ARIA forwarding is not a patch; it is the price of keeping the native control, and a declared list makes it one loop rather than one branch per attribute.
+
+## Keyboard follows the eye, not the DOM
+
+Where a component supports a reversed layout, arrow keys, `Home`, and `End` move in **visual** order, so a right arrow always moves focus rightward.
+
+The alternative — always advancing in DOM order — is simpler to implement and wrong for the user, who sees focus jump left when pressing right. The cost of doing it properly is a sign flip inside a pure function that already receives the orientation, which is close to nothing.
+
+`Home` and `End` were briefly given the opposite treatment, on the argument that they mean "start and end of the list" rather than "left and right edge". Consistency won: one rule for every movement key is easier to hold than one rule with an exception, and the user's model of the widget is what they can see.
+
+The obligation this creates: the component owns the CSS that reverses the axis, driven by its own attribute. An external stylesheet flipping `flex-direction` behind the component's back desynchronises keyboard from layout silently, and nothing can detect it.
 
 ## The `AWESOME AI` first line
 

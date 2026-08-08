@@ -146,7 +146,8 @@ UI elements have no `setup()`. They render immediately with safe defaults and ac
 - **Attributes for scalars** — strings, numbers, booleans. Add `observedAttributes` only when the component must react to an outside change. An attribute styled entirely by CSS is not observed; note the omission in a comment so it does not read as an oversight.
 - **Never accept a function, class instance, or DOM node through an attribute.**
 - **Consumer content is a third channel** — content regions, §7.
-- **A public ARIA attribute on the host is an input too.** Where the host forwards `aria-label` / `aria-labelledby` to an inner control, observe them — forwarding once at render leaves a later `setAttribute` silently doing nothing.
+- **ARIA attributes on the host are inputs too.** Where the host is not itself the control, a name or state written on it is never announced, so the component forwards it inward. Declare a **list** of forwarded ARIA attributes in `<name>-dom.ts`, copy them in a loop at render, and put the same list in `observedAttributes` — forwarding once at render leaves a later `setAttribute` silently doing nothing. A wildcard is not available: `observedAttributes` is a static list, so scanning `this.attributes` saves the copying but not the declaring. Leave the attribute on the host as well as the control; the host has no role, so a duplicate there announces nothing.
+- **State the component owns gets a property, not just forwarding.** A caller setting `el.pressed = true` should not have to know which inner node carries `aria-pressed`, and a parent widget driving its children must never write ARIA onto nodes it does not own (`accessibility.md` §5). The property writes the attribute; the ARIA list keeps the consumer's own markup working.
 - **Upgrade public properties on connect.** A property set before the class registers becomes an own property that shadows the accessor, so the setter never runs:
 
 ```ts
@@ -168,7 +169,7 @@ A **content region** is a named, fixed area of a component that a consumer can f
 
 **These are not Shadow-DOM slots**, and differ from them in two honest ways: supplied nodes are **moved** into the component's skeleton (not projected — ownership effectively transfers), and capture is **one-time** (children added to the host later are not picked up; use `setContent`).
 
-**Scope:** regions are for **fixed, singular areas declared in the skeleton**. Repeated per-item content — rows, list items, options — is **not** a region job: it goes through a render callback passed via `setup()` or a property. In composite widgets, per-item content is **strings only**, never nodes (`accessibility.md` §5).
+**Scope:** regions are for **fixed, singular areas declared in the skeleton**. Repeated per-item content — rows, list items, options — is **not** a region job: it goes through a render callback passed via `setup()` or a property. Where a composite widget's items are containers rather than controls (listbox, tree, grid), per-item content is **strings only**, never nodes — a string cannot carry a tab stop. Where the items *are* the controls (a toolbar of buttons), the consumer supplies the controls themselves. See `accessibility.md` §3.1 and §5.
 
 **Consumer side, HTML** — `data-region="<name>"` on a direct child; children without it (bare text included) form the `default` region:
 
@@ -304,7 +305,7 @@ connectedCallback() {
 
 What makes step 1 safe: **a library element is itself built on the native element.** `ui-button` renders a real `<button>` inside its light DOM; it wraps native semantics, it does not reimplement them. A `ui-` element that paints a `<div>` where a native control exists is a bug in that element.
 
-**Exception — composite widgets.** Where the container owns the keyboard model, no focusable element belongs inside an item, library or native alike: it creates a second tab stop competing with the roving tabindex. Use a non-focusable visual plus state on the item. See `accessibility.md` §3.
+**Exception — composite widgets.** Where the container owns the keyboard model, what matters is whether the item **is** the control or merely **contains** one. A toolbar or tab list is made of real controls carrying the roving tabindex themselves — composing `ui-button` there is correct. A listbox, tree, or grid item is a container, and a focusable inside it creates a second tab stop competing with the roving one — library or native alike. The test is how many focus targets one item has: one is fine, two is the bug. See `accessibility.md` §3.1.
 
 **Compose, don't inherit.** A widget composes UI elements inside it and holds the intelligence.
 
@@ -320,7 +321,8 @@ What makes step 1 safe: **a library element is itself built on the native elemen
 - No appending children to a host after connect — properties or `setContent` (§7.1).
 - No per-item nodes in composite widgets — strings via callback only.
 - No listeners on a dumb element — the owning widget delegates at the container.
-- No `setTimeout` to "wait for" the DOM; no `MutationObserver` unless a concrete need forces it.
+- No `setTimeout` to "wait for" the DOM. Ever — it is always a workaround for an ordering problem that has a real solution.
+- No `MutationObserver` where an explicit channel already exists (a property, a command, an observed attribute). It is legitimate where a component genuinely must react to DOM it does not control — a container whose consumer adds and removes children at runtime is the clear case. Justify it in a comment, and prefer the narrowest config (`childList` on one node, not `subtree`).
 - No class-name literals in JS; no CSS in JS.
 - No emitting from a command that reflects state.
 
