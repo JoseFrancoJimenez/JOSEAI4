@@ -1,12 +1,12 @@
 // AWESOME AI
 
 import './ui-button.css';
-import { cls } from './ui-button-dom.ts';
+import { cls, forwardedAria } from './ui-button-dom.ts';
 
 type UiButtonType = 'button' | 'submit' | 'reset';
 type UiButtonIconPosition = 'start' | 'end';
 
-const UPGRADE_PROPS = ['label', 'icon', 'iconPosition', 'type', 'disabled'] as const;
+const UPGRADE_PROPS = ['label', 'icon', 'iconPosition', 'type', 'disabled', 'pressed'] as const;
 
 const DEV: boolean = import.meta.env.DEV;
 
@@ -21,7 +21,7 @@ class UiButtonElement extends HTMLElement {
   static get observedAttributes(): string[] {
     // icon-position is not observed: it is styled entirely by a CSS attribute selector, so
     // there is nothing for the component to react to.
-    return ['label', 'icon', 'type', 'disabled', 'aria-label', 'aria-labelledby'];
+    return ['label', 'icon', 'type', 'disabled', 'pressed', ...forwardedAria];
   }
 
   #rendered = false;
@@ -71,6 +71,14 @@ class UiButtonElement extends HTMLElement {
     this.toggleAttribute('disabled', value);
   }
 
+  get pressed(): boolean {
+    return this.hasAttribute('pressed');
+  }
+
+  set pressed(value: boolean) {
+    this.toggleAttribute('pressed', value);
+  }
+
   connectedCallback(): void {
     this.classList.add(cls.host);
     for (const prop of UPGRADE_PROPS) this.#upgradeProperty(prop);
@@ -94,9 +102,11 @@ class UiButtonElement extends HTMLElement {
       case 'disabled':
         this.#controlEl.disabled = this.disabled;
         break;
-      case 'aria-label':
-      case 'aria-labelledby':
-        this.#applyAccessibleName();
+      case 'pressed':
+        this.#applyPressed();
+        break;
+      default:
+        if ((forwardedAria as readonly string[]).includes(name)) this.#applyForwardedAria(name as (typeof forwardedAria)[number]);
         break;
     }
   }
@@ -119,9 +129,10 @@ class UiButtonElement extends HTMLElement {
 
     this.#controlEl.type = this.type;
     this.#controlEl.disabled = this.disabled;
+    this.#applyPressed();
     this.#labelEl.textContent = this.label;
     this.#setIcon(this.icon);
-    this.#applyAccessibleName();
+    for (const name of forwardedAria) this.#applyForwardedAria(name);
 
     this.#rendered = true;
 
@@ -143,15 +154,25 @@ class UiButtonElement extends HTMLElement {
     this.#iconEl.append(icon);
   }
 
-  /** Forwards a consumer-supplied `aria-label`/`aria-labelledby` from the (non-focusable) host to the inner control. */
-  #applyAccessibleName(): void {
-    const label = this.getAttribute('aria-label');
-    if (label !== null) this.#controlEl.setAttribute('aria-label', label);
-    else this.#controlEl.removeAttribute('aria-label');
+  /**
+   * Writes `aria-pressed` on the control from the `pressed` property, never the reverse — the
+   * button never toggles itself. Absent, not `"false"`, when not pressed: a plain button carrying
+   * `aria-pressed="false"` would announce as a toggle.
+   */
+  #applyPressed(): void {
+    if (this.pressed) this.#controlEl.setAttribute('aria-pressed', 'true');
+    else this.#controlEl.removeAttribute('aria-pressed');
+  }
 
-    const labelledby = this.getAttribute('aria-labelledby');
-    if (labelledby !== null) this.#controlEl.setAttribute('aria-labelledby', labelledby);
-    else this.#controlEl.removeAttribute('aria-labelledby');
+  /**
+   * Forwards one ARIA attribute from the (non-focusable) host to the inner control. The
+   * attribute stays on the host too — it has no role and is not focusable, so a duplicate there
+   * announces nothing, and removing consumer markup is not this component's business.
+   */
+  #applyForwardedAria(name: (typeof forwardedAria)[number]): void {
+    const value = this.getAttribute(name);
+    if (value !== null) this.#controlEl.setAttribute(name, value);
+    else this.#controlEl.removeAttribute(name);
   }
 
   /**

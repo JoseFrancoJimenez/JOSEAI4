@@ -6,4 +6,11 @@ const cls = {
   label: 'ui-button__label',
 } as const;
 
-export { cls };
+/**
+ * ARIA attributes forwarded from the (non-focusable) host to the inner control. `aria-pressed`
+ * is deliberately not here — that state is owned by the `pressed` property, and accepting it
+ * from the host too would give the same state two sources.
+ */
+const forwardedAria = ['aria-label', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-expanded'] as const;
+
+export { cls, forwardedAria };

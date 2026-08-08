@@ -20,9 +20,11 @@ It is the library's first component and the first practical test of the authorin
 
 ## 3. Scope
 
-**In:** `label`, `icon`, `icon-position`, `type`, `disabled` attributes with reflecting properties; `aria-label` / `aria-labelledby` forwarding; focus delegation; icon-only support with a dev-time accessible-name check.
+**In:** `label`, `icon`, `icon-position`, `type`, `disabled`, `pressed` attributes with reflecting properties; a declared list of forwarded ARIA attributes (`aria-label`, `aria-labelledby`, `aria-describedby`, `aria-controls`, `aria-expanded`); focus delegation; icon-only support with a dev-time accessible-name check.
 
-**Out — do not build, do not leave hooks for:** content regions, `setContent`, harvesting; variants (primary/secondary/danger); sizes; loading state; toggle/`aria-pressed`; `href`/anchor rendering; `name`/`value` form participation; a `control` getter exposing the inner button; soft-disabled (`aria-disabled`) mode; custom events; RTL handling.
+**Out — do not build, do not leave hooks for:** content regions, `setContent`, harvesting; variants (primary/secondary/danger); sizes; loading state; `href`/anchor rendering; `name`/`value` form participation; a `control` getter exposing the inner button; soft-disabled (`aria-disabled`) mode; custom events; RTL handling.
+
+`pressed` (with `aria-pressed` reflection) was added after the initial build — see `button-modification-plan.md` and `rationale.md`.
 
 `name`/`value`, soft-disabled, and regions are all non-breaking to add later. They are out because there is no present need.
 
@@ -40,6 +42,7 @@ export class UiButtonElement extends HTMLElement {
   iconPosition: UiButtonIconPosition;   // ↔ 'icon-position'  default 'start'
   type: UiButtonType;                   // ↔ 'type'           default 'button'
   disabled: boolean;                    // ↔ 'disabled'       presence
+  pressed: boolean;                     // ↔ 'pressed'        presence
 
   focus(options?: FocusOptions): void;
   blur(): void;
@@ -84,10 +87,11 @@ Rules:
 - **`label=""` is unset, not empty** — `<ui-button label="" icon="…">` is an icon-only button, since an empty string falls naturally out of templating. Same for `icon=""`.
 - **Clearing works.** Removing the attribute or setting the property to `''` empties the corresponding span, which the `:empty` CSS then hides. The getter and the DOM never disagree.
 
-`observedAttributes`: `label`, `icon`, `type`, `disabled`, `aria-label`, `aria-labelledby`.
+`observedAttributes`: `label`, `icon`, `type`, `disabled`, `pressed`, plus the forwarded ARIA list — `aria-label`, `aria-labelledby`, `aria-describedby`, `aria-controls`, `aria-expanded`.
 
 - `icon-position` is **not** observed: it is styled entirely by the CSS attribute selector, so the component has nothing to react to (skill §6). Say so in a comment, or the omission reads as an oversight.
-- `aria-label` and `aria-labelledby` **are** observed, so a name set after connect still reaches the control. Forwarding once at render would make the dev warning in Task 4 tell consumers to do something that does not work.
+- The forwarded ARIA attributes **are** observed, so a name (or other forwarded attribute) set after connect still reaches the control. Forwarding once at render would make the dev warning in Task 4 tell consumers to do something that does not work. The list lives in `ui-button-dom.ts`; adding the next forwarded attribute costs one array entry, not a new branch.
+- `pressed` is a presence attribute, same shape as `disabled`. It is **not** part of the forwarded ARIA list — `aria-pressed` on the control is owned entirely by the `pressed` property; `aria-pressed` written directly on the host is ignored.
 
 ## 7. Accessibility
 
@@ -96,7 +100,8 @@ APG pattern: **Button**. Most of it is native and must stay that way.
 - **One button, not two.** The host gets no `tabindex`, no `role`, and is never a focus target. The inner `<button>` is the only accessible control.
 - **Native `disabled`** on the inner control. It removes the control from the tab order, blocks activation, and announces correctly — no ARIA, no swallowed events, no code.
 - **The icon span is `aria-hidden="true"`**, so a decorative glyph never reaches the accessibility tree.
-- **Accessible name:** the label normally provides it. `aria-label` / `aria-labelledby` on the host are forwarded to the inner control, since a name on a non-focusable wrapper is not announced.
+- **Accessible name:** the label normally provides it. `aria-label` / `aria-labelledby` on the host are forwarded to the inner control, since a name on a non-focusable wrapper is not announced — part of the general forwarded-ARIA list (§6).
+- **Pressed state:** the `pressed` property writes `aria-pressed` on the inner control — present only when `pressed` is true; absent (never `"false"`) otherwise, so a plain button is never announced as a toggle. The button never toggles itself: activation only fires `click`, and whoever owns the state (e.g. `widget-button-group`) decides what to do with it.
 - **No custom events** — the inner button's `click` bubbles out of the host. Nothing is re-dispatched (skill §8).
 - **`:focus-visible`** styled on the inner control using the shared `--ui-focus-ring` token with a fallback (skill §10). Do not hardcode a bare value; do not create a token file for one component.
 

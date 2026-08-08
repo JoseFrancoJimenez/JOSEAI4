@@ -22,6 +22,10 @@ ui-button:not(:defined) {
       outline: var(--ui-focus-ring, 2px solid #5b8af5);
       outline-offset: 2px;
     }
+
+    &[aria-pressed='true'] {
+      background: var(--ui-button-pressed-bg, #dbe4fd);
+    }
   }
 
   .ui-button__icon {

@@ -137,6 +137,63 @@ describe('property reflection and write precedence', () => {
   });
 });
 
+describe('pressed', () => {
+  it('reflects the property to the attribute and back', () => {
+    const el = mount();
+
+    el.pressed = true;
+    expect(el.hasAttribute('pressed')).toBe(true);
+    expect(el.pressed).toBe(true);
+
+    el.pressed = false;
+    expect(el.hasAttribute('pressed')).toBe(false);
+    expect(el.pressed).toBe(false);
+  });
+
+  it('present at render → control has aria-pressed="true"', () => {
+    const el = mount('<ui-button pressed label="Save"></ui-button>');
+    expect(control(el).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('absent at render → control has no aria-pressed attribute at all', () => {
+    const el = mount('<ui-button label="Save"></ui-button>');
+    expect(control(el).hasAttribute('aria-pressed')).toBe(false);
+  });
+
+  it('setting pressed after render updates the control', () => {
+    const el = mount('<ui-button label="Save"></ui-button>');
+    el.pressed = true;
+    expect(control(el).getAttribute('aria-pressed')).toBe('true');
+    el.pressed = false;
+    expect(control(el).hasAttribute('aria-pressed')).toBe(false);
+  });
+
+  it('setting pressed does not emit anything', () => {
+    const el = mount('<ui-button label="Save"></ui-button>');
+    const spy = vi.fn();
+    el.addEventListener('click', spy);
+    el.pressed = true;
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('activating the button does not change pressed — it only fires click', () => {
+    const el = mount('<ui-button label="Save"></ui-button>');
+    control(el).click();
+    expect(el.pressed).toBe(false);
+  });
+
+  it('aria-pressed written directly on the host is ignored — pressed is the channel', () => {
+    const el = mount('<ui-button label="Save" aria-pressed="true"></ui-button>');
+    expect(control(el).hasAttribute('aria-pressed')).toBe(false);
+  });
+
+  it('disabled and pressed together: control is disabled and aria-pressed="true"', () => {
+    const el = mount('<ui-button disabled pressed label="Save"></ui-button>');
+    expect(control(el).disabled).toBe(true);
+    expect(control(el).getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
 describe('accessible name forwarding', () => {
   it('forwards a host aria-label to the inner control', () => {
     const el = mount('<ui-button icon="fa-solid fa-star" aria-label="Favourite"></ui-button>');
@@ -152,6 +209,33 @@ describe('accessible name forwarding', () => {
   it('an aria-label set after connect reaches the control', () => {
     const el = mount('<ui-button icon="fa-solid fa-star"></ui-button>');
     el.setAttribute('aria-label', 'Favourite');
+    expect(control(el).getAttribute('aria-label')).toBe('Favourite');
+  });
+});
+
+describe('ARIA forwarding list', () => {
+  const forwarded = ['aria-label', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-expanded'];
+
+  it.each(forwarded)('%s reaches the control at render', (name) => {
+    const el = mount(`<ui-button ${name}="x"></ui-button>`);
+    expect(control(el).getAttribute(name)).toBe('x');
+  });
+
+  it.each(forwarded)('%s set after render reaches the control', (name) => {
+    const el = mount();
+    el.setAttribute(name, 'x');
+    expect(control(el).getAttribute(name)).toBe('x');
+  });
+
+  it.each(forwarded)('removing %s from the host removes it from the control', (name) => {
+    const el = mount(`<ui-button ${name}="x"></ui-button>`);
+    el.removeAttribute(name);
+    expect(control(el).hasAttribute(name)).toBe(false);
+  });
+
+  it('the attribute stays on the host as well as the control', () => {
+    const el = mount('<ui-button aria-label="Favourite"></ui-button>');
+    expect(el.getAttribute('aria-label')).toBe('Favourite');
     expect(control(el).getAttribute('aria-label')).toBe('Favourite');
   });
 });

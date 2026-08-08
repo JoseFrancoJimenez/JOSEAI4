@@ -8,7 +8,9 @@
       "Bash(tee /tmp/test-out.log)",
       "Bash(pnpm --filter @mini/lib test -- ui-button)",
       "Read(//tmp/**)",
-      "Bash(pnpm --filter lib vitest run ui-button)"
+      "Bash(pnpm --filter lib vitest run ui-button)",
+      "Bash(npx tsc *)",
+      "Bash(git --no-pager diff -- docs/tasks/button-component.md)"
     ]
   },
   "model": "opusplan"
