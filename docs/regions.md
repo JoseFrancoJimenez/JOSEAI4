@@ -1,10 +1,8 @@
 # Content regions — the shared harvest/fill helper
 
-**Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively.**
-
 Read this when building a component that accepts consumer content, or when changing `src/lib/core/regions.ts`. Authoring rules for regions live in the `web-components` skill §7; this file is the helper's own specification.
 
-> **Status:** built and pinned by its own suite (`regions.test.ts`). **It currently has no consumer** — `ui-button` was written as its first, then dropped regions (see `rationale.md`). Kept on purpose, not by omission: the next widget with a header, a footer, or an empty-state needs it, and the mechanism is the one piece of this repo that is genuinely hard to get right twice. Revisit if it is still unused when the third component ships.
+> **Status:** built and pinned by its own suite (`regions.test.ts`). **It currently has no consumer** — `ui-button` was written as its first, then dropped regions (see `docs/rationale.md`). Kept on purpose, not by omission: the next widget with a header, a footer, or an empty-state needs it, and the mechanism is the one piece of this repo that is genuinely hard to get right twice. Revisit if it is still unused when the third component ships.
 
 ## 1. What it is and where it lives
 
@@ -12,7 +10,7 @@ A **content region** is a named, fixed area a consumer can fill — an icon, a l
 
 - Lives in `src/lib/core/regions.ts`, tests co-located as `regions.test.ts`.
 - Used only by components that declare regions. A component with no regions does not import it.
-- It is **not** Shadow-DOM slots: nodes are *moved* (ownership transfers), and capture is *one-time*. See `rationale.md`.
+- It is **not** Shadow-DOM slots: nodes are *moved* (ownership transfers), and capture is *one-time*. See `docs/rationale.md`.
 
 ## 2. Surface
 
@@ -61,19 +59,9 @@ This closes a real silent-loss hole. Harvest moves the content out of the host i
 
 Considered and rejected: warning at fill time inside each component. Same information, repeated per component, and a component that skips the check reintroduces the hole.
 
-## 6. What happens to consumer children — the three fates
+## 6. What happens to consumer children
 
-Worth stating plainly, because "ignored" is the intuitive answer and it is wrong in all three cases.
-
-| When | What happens | Visible? |
-|---|---|---|
-| Present at first connect (HTML parse, `innerHTML`, cloned template, or appended **before** the host is attached) | Harvested: routed by `data-region`, moved into the skeleton | Yes, in its outlet |
-| Harvested into a region no outlet claims | Fragment dropped, host already emptied — **destroyed** | No. Dev warning (§5) |
-| Appended **after** first connect | Never harvested, never overwritten — sits as a sibling of the skeleton | Yes, unmanaged and unstyled |
-
-The third is the light-DOM exposure we accept by not using Shadow DOM. It is handled by convention, not by a guard: **after connect, content changes go through properties or `setContent`, never by appending children.** A `MutationObserver` would detect violations, but it is on the anti-pattern list and has no concrete need yet — if a stray-child bug actually bites, that is the fix, dev-only.
-
-Note also that a consumer doing `host.innerHTML = …` after render wipes the skeleton and leaves the component's cached element references pointing at detached nodes. Same convention covers it.
+The three fates of consumer children — harvested, destroyed with a dev warning, or left as an unmanaged sibling — and the authoring conventions that follow are owned by the skill, §7.1. This spec adds only the helper-side fact behind fate two: harvest empties the host **before** anything knows whether an outlet wants the content, which is exactly why the unclaimed-region warning (§5) lives in the helper and not in each component.
 
 ## 7. Tests
 

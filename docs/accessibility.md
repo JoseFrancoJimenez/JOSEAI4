@@ -2,7 +2,7 @@
 
 Read before writing any interactive component. Accessibility is the component's keyboard and semantics contract — for anything structural it is designed first, not added afterwards.
 
-**Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively.** Accessibility is not abstraction — it is part of "works". Never trade it for brevity. What the mantra rules out here is inventing behaviour the pattern does not call for.
+Accessibility is not abstraction — it is part of "works". Never trade it for brevity. What the pragmatic mantra rules out here is inventing behaviour the pattern does not call for.
 
 ## 0. What can be added later, and what cannot
 
@@ -27,7 +27,7 @@ Read before writing any interactive component. Accessibility is the component's 
 
 ## 1. Start from the APG pattern
 
-Find the matching WAI-ARIA Authoring Practices pattern (button, checkbox, disclosure, listbox, combobox, tree view, tabs, toolbar, dialog…) and follow it. Name the pattern in a comment at the top of the component. If no pattern matches, the component is probably two components.
+Find the matching WAI-ARIA Authoring Practices pattern (button, checkbox, disclosure, listbox, combobox, tree view, tabs, toolbar, dialog…) and follow it. Name the pattern in a comment at the top of the component. If no pattern matches, the component is probably two components — or **no pattern at all**: static or form-like content (a panel of labelled controls, a legend, a settings form) is plain semantic HTML in natural tab order. An APG pattern is for composite interaction, not for every repeated list; no ARIA is better than wrong ARIA.
 
 The pattern is chosen per component, from the behaviour the component actually has — not from a default. The rules below constrain how a pattern is implemented; they do not pick it for you.
 
@@ -64,6 +64,14 @@ The rule that matters is not "never a focusable inside an item" — it is **whet
 In the forbidden case, interactive-looking parts are **state on the item, not controls in it**: state in an ARIA attribute on the item, visual in an `aria-hidden` `<span>` styled from `data-state`, action bound to a key the container handles.
 
 The test to apply: *after adding this element, how many focus targets does one item have?* One → fine. Two → the bug.
+
+### 3.2 Widgets inside widgets
+
+**Focus models do not nest.** By default, composing widgets is layout, not coordination: each composite keeps its own single Tab stop and its own arrow keys, and **Tab is the inter-widget key**. A widget inside a tabpanel, a panel, or a disclosure section is simply the next tab stop — nothing to design. Two mechanical guards keep an outer composite's delegated `keydown` honest when something focusable legitimately sits inside it: bail if `event.defaultPrevented` (an inner widget already claimed the key — §2 guarantees it called `preventDefault()`), and bail if the target is a text-entry control (`input`, `textarea`, `contenteditable`), where arrows move the caret natively and the user leaves with Tab.
+
+A widget inside a **roving item** stays forbidden by §3.1. The APG shapes that permit it — grid/treegrid with an interaction mode (Enter descends into the cell, Esc restores the roving), toolbar with axis-partitioned keys, menu with submenus — are designed from the pattern when a real component needs one, not before.
+
+**A "tree" whose items need embedded controls is usually not the Tree pattern.** Model it as a nested disclosure list: real disclosure `<button>`s carrying `aria-expanded`, per-item controls as **siblings of the button** — never inside it, since interactive content inside a `<button>` is invalid — everything in natural tab order. Heuristic: count the focus targets one item needs. One → roving Tree, state as ARIA on the item. Several → disclosure list. Several *and* arrow navigation indispensable at scale → treegrid interaction mode, the expensive answer. A component commits to **one** focus model; it never switches by flag.
 
 ## 4. Roles and semantics
 

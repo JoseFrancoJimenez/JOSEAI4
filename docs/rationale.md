@@ -1,6 +1,6 @@
 # Rationale — why the rules are what they are
 
-For me, not for the agent. `SKILL.md` states the rules; this explains the reasoning so a future decision can be revisited on purpose instead of by accident.
+Decision log — for the operator. **Agent:** open this only when the operator asks why a rule exists, or when a task proposes changing a decided rule; answer from here. Do not load it for normal tasks. The skill and the docs state the rules; this explains the reasoning so a future decision can be revisited on purpose instead of by accident.
 
 **Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively.** This was the tiebreaker for nearly every decision below.
 

@@ -2,11 +2,9 @@
 
 How the pieces are divided and layered. `CLAUDE.md` holds the short rules and points here for detail. This file is read on demand — when a task needs it.
 
-**Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively. Pragmatic is not careless: the code must be easy to read, easy to understand, easy to maintain, easy to scale and easy to test.**
-
 The library is a set of **self-contained** front-end building blocks — **UI elements**, **widgets**, and **tools** (base store, event emitter, region helper) — consumed by multiple apps (some GIS, some not). The repo also hosts throwaway prototypes to test ideas. Nothing in the library may depend on app state; wiring to global state happens **around** a widget, never inside it (this applies to library widgets only, not to application widgets).
 
-Scope note: this file covers *what goes where and in how many layers*. Authoring mechanics (lifecycle, `setup()`, content regions, events, `html()`, CSS, accessibility, test recipes) live in the `web-components` skill. App state and store wiring live in `docs/store.md`; the region helper's own spec lives in `docs/regions.md`.
+Scope note: this file covers *what goes where and in how many layers*. Authoring mechanics (lifecycle, `setup()`, content regions, events, `html()`, CSS) live in the `web-components` skill; the accessibility contract is `docs/accessibility.md`; test recipes are `docs/testing.md`. App state and store wiring live in `docs/store.md`; the region helper's own spec lives in `docs/regions.md`; maps (adapters, layer configs, the map widget) live in `docs/maps.md`.
 
 ---
 
@@ -21,7 +19,7 @@ Distinguished by one question: **does it hold state and decide something, or doe
 
 A widget typically **composes UI elements inside it**: the widget holds the intelligence; the leaf pieces that only paint are UI elements. Consumer-supplied content is passed in — through declared **content regions** for fixed areas, or a **render callback** for repeated per-item content (see the `web-components` skill) — never hard-coded. Regions are opt-in: an element configurable by attributes alone declares none.
 
-**Library widgets never touch a global store.** A widget with its own state uses **local** state (a small listener array, or its own `Evented` subclass). Connecting a widget to app state is an app-level concern — see `docs/store.md`.
+**Library widgets never use a store** — local state only; wiring a widget to app state happens around it, at app level (`docs/store.md`).
 
 ## 2. MVVM and the complexity spectrum
 
@@ -45,7 +43,7 @@ Target a **pyramid**, and prefer designs that make one possible:
 - **Middle (fewer, with DOM):** **widgets and elements** as custom elements — mounted, driven, asserted on rendered output and dispatched events.
 - **Tools:** the base **store** and the **region helper** — their behaviours are pinned once, each in its own suite (`docs/store.md`, `docs/regions.md`).
 
-If a piece of logic is hard to test because it needs a DOM, that is the signal to extract it into a plain class — not to write a heavier test. Mechanics (mount helpers, what to assert, jsdom limits) are in the `web-components` skill, `testing.md`.
+Hard-to-test-without-a-DOM is the extraction signal (`docs/testing.md` §1). Mechanics (mount helpers, what to assert, jsdom limits) are in `docs/testing.md`.
 
 ## 4. Repo layout — pnpm monorepo
 
@@ -58,6 +56,7 @@ src/
     core/              # tools: evented.ts, store.ts, freeze.ts, ids.ts, regions.ts
     elements/          # UI elements (ui-button, ui-checkbox, ...)
     widgets/           # widgets + their local models (e.g. widgets/datepicker/)
+    maps/              # engine adapters + layer configs + the map widget (docs/maps.md)
   apps/
     <app>/             # an individual app (Vite) — imports the lib as a workspace dep
     sandbox/           # a throwaway app for testing ideas (disposable)
@@ -65,6 +64,10 @@ docs/
   plan.md              # this file
   store.md             # the store: usage, rules, and wiring a widget to it
   regions.md           # the content-region helper: surface, rules, dev warnings
+  accessibility.md     # keyboard & semantics contract for interactive components
+  testing.md           # test recipes: plain classes and components
+  maps.md              # GIS: engine adapters, layer configs, the map widget
+  rationale.md         # decision log — operator-facing; agent reads only on request
   <widget>-plan.md     # per-widget specs and task breakdowns
 CLAUDE.md              # short rules (auto-loaded)
 .claude/skills/
@@ -75,5 +78,10 @@ human.md               # operator guide (not for the agent)
 - Tests co-located as `*.test.ts` next to source.
 - `src/lib` holds **only** self-contained library code. The base `Store` is a library tool; **concrete domain stores and app-level wrappers live in an app under `src/apps/`**, never in `src/lib`.
 - Apps import the library as a **workspace package** (e.g. `import { Store } from '@<scope>/lib/core'`), never by a relative path into `src/lib`. Dependency points **app → lib** only.
-- Apps consume a component through its **public contract only** — tag, attributes, properties, custom properties, events. Never query into a component's internal DOM, never style its internal class names. This is what keeps the light-DOM decision reversible (`rationale.md`).
+- Apps consume a component through its **public contract only** — tag, attributes, properties, custom properties, events. Never query into a component's internal DOM, never style its internal class names. This is what keeps the light-DOM decision reversible (`docs/rationale.md`).
+- Single owner, one workspace: **breaking a library contract is fine** — update every consumer in the same change. No deprecation shims, no legacy aliases.
 - Keep experiment apps (e.g. `src/apps/sandbox`) disposable — one folder per idea.
+
+## 5. Maps
+
+GIS building blocks live in `src/lib/maps/<engine>/`: **plain-class adapters** wrapping the engine's map, **layer-config** types, and the **map widget** that receives an adapter through `setup()`. Everything about them — dependency policy, config-format decisions, extension by apps — is `docs/maps.md`.

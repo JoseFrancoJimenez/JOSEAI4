@@ -1,14 +1,16 @@
-# Testing components
+# Testing
 
 Vitest + jsdom. Tests are co-located as `*.test.ts` next to the source. Run and iterate in the **terminal**, not in chat.
 
-**Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively.** Fewer, sharper tests over exhaustive ones — but the pyramid base is not the place to economise.
+Plain classes — tools, models, ViewModels, an adapter's pure parts — are instantiated and asserted directly; the first row of §1 is their whole recipe. The rest of this file is the **component** recipe.
+
+Fewer, sharper tests over exhaustive ones — but the pyramid base is not the place to economise.
 
 ## 1. What to test at each layer
 
 | Layer | How | What to assert |
 |---|---|---|
-| Pure model / ViewModel | Instantiate, no DOM | Rules, edge cases, empty input. Fast and exhaustive — this is the big win, put the effort here. |
+| Plain class (model, ViewModel, tool, adapter logic) | Instantiate, no DOM | Rules, edge cases, empty input. Fast and exhaustive — this is the big win, put the effort here. |
 | UI element | Mount, set props, interact | Property in → rendered output. Interaction → the right event on the host, with the right `detail` where it is a `CustomEvent`. |
 | Widget | Mount, drive through its public API | Readiness gate, commands, delegated keyboard/pointer, emitted events, ARIA after every operation. |
 | App wrapper | Fake model / fake store | The wiring in both directions, nothing else. |

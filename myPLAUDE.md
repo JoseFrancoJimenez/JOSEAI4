@@ -2,55 +2,49 @@
 
 A library of **self-contained** UI elements, widgets, and tools reused across multiple apps — some GIS, some not. This repo also holds throwaway prototypes for testing ideas.
 
-**Guiding principle: be pragmatic — no over-engineering.** Build the minimum that works. Add structure, layers, or abstraction only when a concrete, present need forces it — never speculatively. Be pragmatic but not careless. Deliver good quality code that is easy to read, easy to understand, easy to maintain, and easy to test.
+**Be pragmatic — no over-engineering.** Build the minimum that works. Add structure, layers, or abstraction only when a concrete, present need forces it — never speculatively. Pragmatic is not careless: the code must be easy to read, easy to understand, easy to maintain, easy to scale and easy to test.
 
-**Stack:** **pnpm** monorepo, **Vite** + **TypeScript**, **vanilla** Web Components / custom elements. **No UI frameworks** (no React, Vue, Svelte), no JSX. No runtime dependencies in library code beyond what a task explicitly requires (like a map adapter in the lib using OpenLayers).
+**Stack:** **pnpm** monorepo, **Vite** + **TypeScript**, **vanilla** Web Components / custom elements. **No UI frameworks** (no React, Vue, Svelte), no JSX. No runtime dependencies in library code beyond what a task explicitly requires. Target evergreen browsers: use platform features directly — no polyfills, no defensive fallbacks.
 
-**Layout:** monorepo — the library lives in `src/lib`, apps in `src/apps/<app>`. Apps depend on the library as a workspace package (`app → lib` only). See `plan.md` §6.
+**Layout:** the library lives in `src/lib`, apps in `src/apps/<app>`. Apps depend on the library as a workspace package. See `docs/plan.md` §4.
 
-This file is **guidance, not enforcement**. The hard invariants below are also enforced by **tests and lint** — that is the real safety net. When a task touches the store or a specced widget, **read the detailed doc** instead of guessing.
+## Read on demand
 
-## Read on demand (do not inline these every turn)
+Do not inline these every turn. Read the one a task touches, and read it rather than guessing.
 
-- Architecture & patterns: `docs/plan.md`
+- **Building a component** (any custom element, UI element, or widget) → the `web-components` skill in `.claude/skills/web-components/`.
+- **Architecture & patterns** (element vs widget, MVVM layering, repo layout) → `docs/plan.md`.
+- **App state** (the store, and wiring a widget to it) → `docs/store.md`.
+- **Maps / GIS** (engine adapters, layer configs, the map widget) → `docs/maps.md`.
+- **Consumer content** (a component that accepts children — regions, harvesting, filling) → `docs/regions.md`.
+- **Why a rule exists** (the operator asks "why is this like this?") → `docs/rationale.md`. Do not load it for normal tasks.
+
+Rules live in exactly one of those. Where a rule must appear twice, the second copy is a pointer, never a restatement.
 
 ## Non-negotiable rules
 
-**Library boundaries**
-
-- Library code is self-contained: UI elements and widgets depend on **nothing** outside their own context — no global stores, no app services, no framework imports.
+- Library code is **self-contained**: UI elements and widgets depend on **nothing** outside their own context — no global stores, no app services, no framework imports. Engine imports (e.g. OpenLayers) are allowed only inside `src/lib/maps/` — policy in `docs/maps.md`.
 - Dependencies point **app → library**, never the reverse.
-- **No Shadow DOM.** All custom elements render into **light DOM**.
-- Contract for every element/widget: **props-down / events-up**. Input by property/attribute; output by `CustomEvent`.
-
-**State (the store tool)**
-
-- **Plain, serializable data only.** Prefer object **records** over `Map`/`Set`. No class instances, DOM nodes, functions, or map instances in state.
-- Change detection is **`Object.is` on references**. **Never `JSON.stringify`** for equality.
-- **No clone-on-read or clone-on-write.**
-- Heavy data stays **out** of state: store ids + light metadata; heavy payloads live in a service cache keyed by id.
-- The base `Store` is for **app-level global state**. Library widgets use their **own local state** (a listener array or their own `Evented` subclass) — never the global `Store`.
-
-**Design**
-
-- Pattern is **MVVM**. Add layers (ViewModel, Model) **by complexity, never preventively**. Extract a ViewModel (a plain, DOM-free class) only when presentation logic is non-trivial and needs testing without a DOM.
+- **No Shadow DOM.** All custom elements render into **light DOM**. Decided on purpose; the reasoning and the conditions that would reopen it are in `docs/rationale.md`.
+- Contract for every element/widget: **props-down / events-up**. Input by property/attribute — and, for consumer content, declared **content regions** (see the skill). Output by `CustomEvent`, or by a native event that already bubbles out of the host — never both for the same interaction.
+- The base `Store` is for **app-level global state**. Library widgets never use a store — not even a private instance; local state is a small listener array or `Evented` (`docs/store.md`).
 - **Testing is first-class.** Prefer architectures where logic is DOM-free and unit-testable.
-- **Single writer** for any shared model, enforced by a **read-only interface** at injection.
+
+This file is guidance; tests and lint are the enforcement.
 
 ## Commands
 
-- Test: `pnpm test`  ← set to this repo's real commands; monorepo, so may be workspace-scoped (e.g. `pnpm --filter <pkg> test`)
+- Test (all): `pnpm test`
+- Test (scoped, while iterating): `pnpm vitest run <path>`
 - Typecheck: `pnpm typecheck`
 - Lint: `pnpm lint`
 
-## Before finishing
-
-Run the closest test and typecheck before reporting a task complete.
+Run the closest test, plus typecheck and lint, before reporting a task complete. Run them in the terminal, not in chat.
 
 ## Language
 
-Code must always be written in English. 
+Code, comments, and commit messages are always in English.
 
-## First words.
+## First words
 
-Your first words, per session, must always be "I've read the docs, I am ready". and specify what documents have you read (name and route).
+Your first words in a session must be "I've read the docs, I am ready", followed by the documents you actually opened for this task, by name and path. List only what you read — not the full catalogue.

@@ -13,8 +13,6 @@ Companions, read when relevant:
 - `docs/testing.md` — required before writing tests.
 - `docs/regions.md` — the region helper's own spec, required before building a component that accepts consumer content.
 
-**Pragmatic by default: build the minimum that works; add abstraction only when a concrete need forces it — never speculatively.**
-
 ## 1. Classify first
 
 Ask: strip away every external input — is there anything left to remember or decide?
@@ -147,7 +145,7 @@ UI elements have no `setup()`. They render immediately with safe defaults and ac
 - **Never accept a function, class instance, or DOM node through an attribute.**
 - **Consumer content is a third channel** — content regions, §7.
 - **ARIA attributes on the host are inputs too.** Where the host is not itself the control, a name or state written on it is never announced, so the component forwards it inward. Declare a **list** of forwarded ARIA attributes in `<name>-dom.ts`, copy them in a loop at render, and put the same list in `observedAttributes` — forwarding once at render leaves a later `setAttribute` silently doing nothing. A wildcard is not available: `observedAttributes` is a static list, so scanning `this.attributes` saves the copying but not the declaring. Leave the attribute on the host as well as the control; the host has no role, so a duplicate there announces nothing.
-- **State the component owns gets a property, not just forwarding.** A caller setting `el.pressed = true` should not have to know which inner node carries `aria-pressed`, and a parent widget driving its children must never write ARIA onto nodes it does not own (`accessibility.md` §5). The property writes the attribute; the ARIA list keeps the consumer's own markup working.
+- **State the component owns gets a property, not just forwarding.** A caller setting `el.pressed = true` should not have to know which inner node carries `aria-pressed`, and a parent widget driving its children must never write ARIA onto nodes it does not own (`docs/accessibility.md` §5). The property writes the attribute; the ARIA list keeps the consumer's own markup working.
 - **Upgrade public properties on connect.** A property set before the class registers becomes an own property that shadows the accessor, so the setter never runs:
 
 ```ts
@@ -169,7 +167,7 @@ A **content region** is a named, fixed area of a component that a consumer can f
 
 **These are not Shadow-DOM slots**, and differ from them in two honest ways: supplied nodes are **moved** into the component's skeleton (not projected — ownership effectively transfers), and capture is **one-time** (children added to the host later are not picked up; use `setContent`).
 
-**Scope:** regions are for **fixed, singular areas declared in the skeleton**. Repeated per-item content — rows, list items, options — is **not** a region job: it goes through a render callback passed via `setup()` or a property. Where a composite widget's items are containers rather than controls (listbox, tree, grid), per-item content is **strings only**, never nodes — a string cannot carry a tab stop. Where the items *are* the controls (a toolbar of buttons), the consumer supplies the controls themselves. See `accessibility.md` §3.1 and §5.
+**Scope:** regions are for **fixed, singular areas declared in the skeleton**. Repeated per-item content — rows, list items, options — is **not** a region job: it goes through a render callback passed via `setup()` or a property. Where a composite widget's items are containers rather than controls (listbox, tree, grid), per-item content is **strings only**, never nodes — a string cannot carry a tab stop. Where the items *are* the controls (a toolbar of buttons), the consumer supplies the controls themselves. And where the component has **no composite focus model** — a disclosure list, a panel of ordinary controls in natural tab order — the callback may return **nodes**, library components included; the component still owns roles, state, and the accessible name on everything it renders itself. See `docs/accessibility.md` §3.1, §3.2 and §5.
 
 **Consumer side, HTML** — `data-region="<name>"` on a direct child; children without it (bare text included) form the `default` region:
 
@@ -201,7 +199,6 @@ html(): string {
 Rules:
 
 - **Harvest once, in `connectedCallback`, before anything writes to the host** (§4), with the shared `harvestRegions` helper from `src/lib/core/`, passing the component's declared region names. It empties the host immediately, so consumer markup is never visible unstyled — which matters for a widget that will not render until `setup()`. The `#harvested` flag prevents a second harvest on a DOM move from swallowing the component's own skeleton.
-- **Harvest iterates `childNodes`, not `children`** — bare text like `Save` must survive — and **skips whitespace-only text nodes**, so pretty-printed HTML does not fill the `default` region and suppress the component's default.
 - **Timing.** Harvest sees children present in the initial HTML parse (module scripts are deferred, §3), in an `innerHTML` assignment, in a cloned `<template>`, and when children are appended *before* the host is attached. For anything later, see §7.1.
 - **Precedence, in two parts.** Within a channel it is last-writer-wins, and **harvest always counts as the first write** — whenever it physically runs, it represents what was in the markup, which logically preceded any code. So `setContent` called before the host is attached still beats the harvest that follows it. The part that rule does not settle is a **convenience attribute** (a `label` that writes into an outlet) competing with a harvested region for the same outlet at first render, since both arrive in the same markup at the same moment: **the harvested region wins**, as the more specific of the two. After first render there is no ambiguity — latest write wins, whatever the channel.
 - **Fill:** supplied content replaces the outlet's children; a region nobody supplied keeps the default written in the skeleton; an outlet with neither is left **empty and hidden by CSS** (§10) — never removed, so a later `setContent` still has a target. Clearing a region after render is `setContent(name, '')`; there is no `unfill`.
@@ -210,7 +207,7 @@ Rules:
 - **`setContent` is input provisioning, not a command:** it never throws and is exempt from `#assertReady`. Before render it stashes; at fill time the stash applies; after render it applies immediately.
 - **Declare the region names** a component accepts in `<name>-dom.ts` alongside `cls`, and export their type from `index.ts`. An unknown name passed to `setContent` is ignored, not an error; an unknown name arriving through **harvest** is a dev-time error, because that content is silently destroyed (`docs/regions.md` §5).
 - **A custom element placed in a region must survive a full teardown.** Harvest detaches it; for a widget host it can stay detached until `setup()` arrives, so its disconnect microtask fires and legitimately tears it down; the fill step reattaches it and its connect runs again. The lifecycle rules in §4 (idempotent connect, symmetric teardown) are exactly what make this safe — a region component must not assume it stays attached.
-- **Region content is presentation, never semantics.** The component owns roles, state, and the accessible name; the consumer supplies what is displayed. See `accessibility.md` §5.
+- **Region content is presentation, never semantics.** The component owns roles, state, and the accessible name; the consumer supplies what is displayed. See `docs/accessibility.md` §5.
 
 ### 7.1 What happens to consumer children
 
@@ -305,7 +302,7 @@ connectedCallback() {
 
 What makes step 1 safe: **a library element is itself built on the native element.** `ui-button` renders a real `<button>` inside its light DOM; it wraps native semantics, it does not reimplement them. A `ui-` element that paints a `<div>` where a native control exists is a bug in that element.
 
-**Exception — composite widgets.** Where the container owns the keyboard model, what matters is whether the item **is** the control or merely **contains** one. A toolbar or tab list is made of real controls carrying the roving tabindex themselves — composing `ui-button` there is correct. A listbox, tree, or grid item is a container, and a focusable inside it creates a second tab stop competing with the roving one — library or native alike. The test is how many focus targets one item has: one is fine, two is the bug. See `accessibility.md` §3.1.
+**Exception — composite widgets.** Where the container owns the keyboard model, what matters is whether the item **is** the control or merely **contains** one. A toolbar or tab list is made of real controls carrying the roving tabindex themselves — composing `ui-button` there is correct. A listbox, tree, or grid item is a container, and a focusable inside it creates a second tab stop competing with the roving one — library or native alike. The test is how many focus targets one item has: one is fine, two is the bug. See `docs/accessibility.md` §3.1.
 
 **Compose, don't inherit.** A widget composes UI elements inside it and holds the intelligence.
 
@@ -313,13 +310,13 @@ What makes step 1 safe: **a library element is itself built on the native elemen
 
 ## 12. Do not
 
-- **No Shadow DOM.** Decided on purpose, with named costs and a named condition for revisiting — `rationale.md`. Do not reach for it to solve a styling collision or a stray-child bug; those have cheaper answers here.
+- **No Shadow DOM.** Decided on purpose, with named costs and a named condition for revisiting — `docs/rationale.md`. Do not reach for it to solve a styling collision or a stray-child bug; those have cheaper answers here.
 - No UI framework, no JSX, no runtime dependency a task did not explicitly require.
 - No global store, app service, or cross-widget import inside `src/lib`.
 - No consumer data interpolated into `html()`; no consumer string parsed as HTML.
 - No re-harvesting regions after the first connect.
 - No appending children to a host after connect — properties or `setContent` (§7.1).
-- No per-item nodes in composite widgets — strings via callback only.
+- No per-item nodes **where the item is a container in a roving-tabindex widget** (listbox, tree, grid) — strings/data only there; a string cannot carry a tab stop. Elsewhere a render callback may return nodes (§7).
 - No listeners on a dumb element — the owning widget delegates at the container.
 - No `setTimeout` to "wait for" the DOM. Ever — it is always a workaround for an ordering problem that has a real solution.
 - No `MutationObserver` where an explicit channel already exists (a property, a command, an observed attribute). It is legitimate where a component genuinely must react to DOM it does not control — a container whose consumer adds and removes children at runtime is the clear case. Justify it in a comment, and prefer the narrowest config (`childList` on one node, not `subtree`).
@@ -331,7 +328,7 @@ What makes step 1 safe: **a library element is itself built on the native elemen
 - `pnpm test` — the closest suite, run in the terminal.
 - `pnpm typecheck` — no new errors.
 - `pnpm lint` — clean on the new files.
-- Accessibility checklist in `accessibility.md` walked, for anything interactive.
+- Accessibility checklist in `docs/accessibility.md` walked, for anything interactive.
 - Code and comments in English.
 
 ## 14. First line
