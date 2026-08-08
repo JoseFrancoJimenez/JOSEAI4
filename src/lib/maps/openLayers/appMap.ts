@@ -11,16 +11,16 @@ import type { FeatureLike } from 'ol/Feature.js';
 import type { Geometry } from 'geojson';
 import Evented from '../../../components/evented.ts';
 import type { Subscription } from '../../../components/evented.ts';
-import { createMap, toOLStyle, type MapConfig, type OLMap, type OLBaseLayer } from './openLayers.ts';
-import { createNativeLayer } from './layerFactory.ts';
-import type { AppLayer } from '../../layers/baseLayer.ts';
-import { VectorAppLayer } from '../../layers/vectorLayer.ts';
-import type { LayerConfig } from '../../layers/types.ts';
-import type { GisStore } from '../../state/gisStore.ts';
-import type { LayerRuntimeState } from '../../state/layers.slice.ts';
-import type { ViewState } from '../../state/view.slice.ts';
-import { selectLayerState, selectView } from '../../state/selectors.ts';
-import { createOverlay, type OverlayHandle } from './overlay.ts';
+import { createMap, toOLStyle, type MapConfig, type OLMap, type OLBaseLayer } from '../maps/openLayers/openLayers.ts';
+import { createNativeLayer } from '../maps/openLayers/layerFactory.ts';
+import type { AppLayer } from '../layers/baseLayer.ts';
+import { VectorAppLayer } from '../layers/vectorLayer.ts';
+import type { LayerConfig } from '../layers/types.ts';
+import type { GisStore } from '../state/gisStore.ts';
+import type { LayerRuntimeState } from '../state/layers.slice.ts';
+import type { ViewState } from '../state/view.slice.ts';
+import { selectLayerState, selectView } from '../state/selectors.ts';
+import { createOverlay, type OverlayHandle } from '../maps/openLayers/overlay.ts';
 import { startPolygonDraw, type DrawSession } from './draw.ts';
 
 /** `[minLon, minLat, maxLon, maxLat]` in EPSG:4326. */

@@ -9,12 +9,12 @@ import EsriJSON from 'ol/format/EsriJSON.js';
 import { bbox } from 'ol/loadingstrategy.js';
 import type OLBaseLayer from 'ol/layer/Base.js';
 
-import type { LayerConfig, VectorLayerConfig, ImageLayerConfig, TileLayerConfig, VectorSourceConfig, WFSSourceConfig, EsriJSONSourceConfig, WfsBackendSourceConfig, ArcGisBackendSourceConfig } from '../../layers/types.ts';
+import type { LayerConfig, VectorLayerConfig, ImageLayerConfig, TileLayerConfig, VectorSourceConfig, WFSSourceConfig, EsriJSONSourceConfig, WfsBackendSourceConfig, ArcGisBackendSourceConfig } from '../layers/types.ts';
 // Sanctioned exception (ground rule 1): layerFactory may import the filter
 // compilers to build display-load URLs.
-import { toCql } from '../../data/filter/toCql.ts';
-import { toEsriWhere } from '../../data/filter/toEsriWhere.ts';
-import type { FilterNode } from '../../data/filter/ast.ts';
+import { toCql } from '../data/filter/toCql.ts';
+import { toEsriWhere } from '../data/filter/toEsriWhere.ts';
+import type { FilterNode } from '../data/filter/ast.ts';
 
 const ESRI_WEB_MERCATOR_WKID = 102100;
 

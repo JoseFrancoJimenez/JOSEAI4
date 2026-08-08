@@ -6,7 +6,7 @@
 
 import { createContext, type ContextKey } from '../components/context.ts';
 import type { GisStore } from './state/gisStore.ts';
-import type { AppMap } from './maps/openLayers/appMap.ts';
+import type { AppMap } from './openLayers/appMap.ts';
 import type { DataSourceRegistry } from './data/dataSourceFactory.ts';
 
 export const storeContext: ContextKey<GisStore> = createContext('gis:store');
