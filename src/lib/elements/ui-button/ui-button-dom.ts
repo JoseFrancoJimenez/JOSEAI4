@@ -6,10 +6,4 @@ const cls = {
   label: 'ui-button__label',
 } as const;
 
-/** Content regions `<ui-button>` accepts. `'default'` is the label; `'icon'` is the leading/trailing icon. */
-type UiButtonRegion = 'default' | 'icon';
-
-const regionNames: readonly UiButtonRegion[] = ['default', 'icon'];
-
-export { cls, regionNames };
-export type { UiButtonRegion };
+export { cls };

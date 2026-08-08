@@ -7,7 +7,8 @@
       "Bash(git commit -m ' *)",
       "Bash(tee /tmp/test-out.log)",
       "Bash(pnpm --filter @mini/lib test -- ui-button)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(pnpm --filter lib vitest run ui-button)"
     ]
   },
   "model": "opusplan"
