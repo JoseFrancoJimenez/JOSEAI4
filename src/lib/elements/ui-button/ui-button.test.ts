@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import './ui-button.ts';
 import type { UiButtonElement } from './ui-button.ts';
 
@@ -207,5 +207,70 @@ describe('click and form participation', () => {
     control(el).click();
 
     expect(submitCount).toBe(1);
+  });
+});
+
+describe('icon-only accessible-name check (dev)', () => {
+  it('warns when an icon-only button has no accessible name', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button icon="fa-solid fa-star"></ui-button>');
+    await Promise.resolve();
+    expect(spy).toHaveBeenCalledOnce();
+    spy.mockRestore();
+  });
+
+  it('does not warn when an icon-only button has an aria-label', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button icon="fa-solid fa-star" aria-label="Favourite"></ui-button>');
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('does not warn when a label is present', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button icon="fa-solid fa-star" label="Save"></ui-button>');
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('does not warn when label is set immediately after connect', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const el = mount('<ui-button icon="fa-solid fa-star"></ui-button>');
+    el.label = 'Save';
+    await Promise.resolve();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+});
+
+describe('children-supplied check (dev)', () => {
+  it('warns when a text child is supplied', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button>Save</ui-button>');
+    expect(spy).toHaveBeenCalledOnce();
+    spy.mockRestore();
+  });
+
+  it('warns when an element child is supplied', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button><span>Save</span></ui-button>');
+    expect(spy).toHaveBeenCalledOnce();
+    spy.mockRestore();
+  });
+
+  it('does not warn for whitespace-only children', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount('<ui-button>\n  \n</ui-button>');
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('does not warn when no children are supplied', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mount();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

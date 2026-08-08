@@ -8,6 +8,8 @@ type UiButtonIconPosition = 'start' | 'end';
 
 const UPGRADE_PROPS = ['label', 'icon', 'iconPosition', 'type', 'disabled'] as const;
 
+const DEV: boolean = import.meta.env.DEV;
+
 /**
  * `<ui-button>` — APG pattern: Button.
  *
@@ -72,6 +74,7 @@ class UiButtonElement extends HTMLElement {
   connectedCallback(): void {
     this.classList.add(cls.host);
     for (const prop of UPGRADE_PROPS) this.#upgradeProperty(prop);
+    if (DEV && !this.#rendered) this.#checkChildrenSupplied();
     this.#render();
   }
 
@@ -121,6 +124,8 @@ class UiButtonElement extends HTMLElement {
     this.#applyAccessibleName();
 
     this.#rendered = true;
+
+    if (DEV) this.#scheduleAccessibleNameCheck();
   }
 
   #html(): string {
@@ -147,6 +152,38 @@ class UiButtonElement extends HTMLElement {
     const labelledby = this.getAttribute('aria-labelledby');
     if (labelledby !== null) this.#controlEl.setAttribute('aria-labelledby', labelledby);
     else this.#controlEl.removeAttribute('aria-labelledby');
+  }
+
+  /**
+   * Dev-only: one microtask after render, flags an icon-only button with no accessible name.
+   * Deferred so a consumer setting `label` right after connect isn't a false positive.
+   */
+  #scheduleAccessibleNameCheck(): void {
+    queueMicrotask(() => {
+      if (this.#labelEl.childNodes.length > 0) return;
+      if (this.#controlEl.hasAttribute('aria-label') || this.#controlEl.hasAttribute('aria-labelledby')) return;
+      console.error(`${this.tagName.toLowerCase()}: icon-only button has no accessible name — set "label", "aria-label", or "aria-labelledby".`);
+    });
+  }
+
+  /**
+   * Dev-only: at connect, before the skeleton is written, flags consumer-supplied children.
+   * `ui-button` takes no content — they would otherwise be silently wiped by `#render`.
+   */
+  #checkChildrenSupplied(): void {
+    if (!this.#hasSuppliedChildren()) return;
+    console.error(`${this.tagName.toLowerCase()}: takes no content — use the "label" and "icon" attributes instead.`);
+  }
+
+  #hasSuppliedChildren(): boolean {
+    for (const node of this.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        if ((node.textContent ?? '').trim() !== '') return true;
+      } else {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Moves a value written before class registration off the instance so the prototype accessor takes over. */
