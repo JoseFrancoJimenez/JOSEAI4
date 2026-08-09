@@ -7,10 +7,15 @@ const cls = {
 } as const;
 
 /**
- * ARIA attributes forwarded from the (non-focusable) host to the inner control. `aria-pressed`
- * is deliberately not here — that state is owned by the `pressed` property, and accepting it
- * from the host too would give the same state two sources.
+ * ARIA attributes forwarded from the host to the inner control, since the host has no role and
+ * is never a focus target — a name or state left on it would never be announced.
  */
-const forwardedAria = ['aria-label', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-expanded'] as const;
+const forwardedAria = [
+  'aria-label',
+  'aria-labelledby',
+  'aria-describedby',
+  'aria-controls',
+  'aria-expanded',
+] as const;
 
 export { cls, forwardedAria };

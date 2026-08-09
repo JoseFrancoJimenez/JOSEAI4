@@ -11,7 +11,15 @@
       "Bash(pnpm --filter lib vitest run ui-button)",
       "Bash(npx tsc *)",
       "Bash(git --no-pager diff -- docs/tasks/button-component.md)",
-      "Bash(echo \"---exit $?---\")"
+      "Bash(echo \"---exit $?---\")",
+      "Bash(echo \"---exit:$?---\")",
+      "Bash(echo \"exit:$?\")",
+      "Bash(echo \"lint-exit:$?\")",
+      "Bash(echo \"typecheck-exit:$?\")",
+      "Bash(echo \"---typecheck exit: $?---\")",
+      "Bash(echo \"---lint exit: $?---\")",
+      "Bash(echo \"typecheck exit: $?\")",
+      "Bash(echo \"lint exit: $?\")"
     ]
   },
   "model": "opusplan"

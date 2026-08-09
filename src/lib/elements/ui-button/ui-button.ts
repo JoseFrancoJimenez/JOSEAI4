@@ -6,7 +6,7 @@ import { cls, forwardedAria } from './ui-button-dom.ts';
 type UiButtonType = 'button' | 'submit' | 'reset';
 type UiButtonIconPosition = 'start' | 'end';
 
-const UPGRADE_PROPS = ['label', 'icon', 'iconPosition', 'type', 'disabled', 'pressed'] as const;
+const UPGRADE_PROPS = ['label', 'icon', 'iconPosition', 'type', 'disabled', 'pressed', 'value'] as const;
 
 const DEV: boolean = import.meta.env.DEV;
 
@@ -19,8 +19,6 @@ const DEV: boolean = import.meta.env.DEV;
  */
 class UiButtonElement extends HTMLElement {
   static get observedAttributes(): string[] {
-    // icon-position is not observed: it is styled entirely by a CSS attribute selector, so
-    // there is nothing for the component to react to.
     return ['label', 'icon', 'type', 'disabled', 'pressed', ...forwardedAria];
   }
 
@@ -46,6 +44,7 @@ class UiButtonElement extends HTMLElement {
     this.setAttribute('icon', value);
   }
 
+  // Not observed: icon-position is styled entirely by a CSS attribute selector, nothing to react to.
   get iconPosition(): UiButtonIconPosition {
     return this.getAttribute('icon-position') === 'end' ? 'end' : 'start';
   }
@@ -79,10 +78,19 @@ class UiButtonElement extends HTMLElement {
     this.toggleAttribute('pressed', value);
   }
 
+  // Not observed: nothing in the component reacts to value; the getter reads the attribute live.
+  get value(): string {
+    return this.getAttribute('value') ?? '';
+  }
+
+  set value(value: string) {
+    this.setAttribute('value', value);
+  }
+
   connectedCallback(): void {
     this.classList.add(cls.host);
     for (const prop of UPGRADE_PROPS) this.#upgradeProperty(prop);
-    if (DEV && !this.#rendered) this.#checkChildrenSupplied();
+    if (!this.#rendered) this.#checkChildren();
     this.#render();
   }
 
@@ -106,8 +114,7 @@ class UiButtonElement extends HTMLElement {
         this.#applyPressed();
         break;
       default:
-        if ((forwardedAria as readonly string[]).includes(name)) this.#applyForwardedAria(name as (typeof forwardedAria)[number]);
-        break;
+        if ((forwardedAria as readonly string[]).includes(name)) this.#forwardAria(name);
     }
   }
 
@@ -129,14 +136,13 @@ class UiButtonElement extends HTMLElement {
 
     this.#controlEl.type = this.type;
     this.#controlEl.disabled = this.disabled;
-    this.#applyPressed();
     this.#labelEl.textContent = this.label;
     this.#setIcon(this.icon);
-    for (const name of forwardedAria) this.#applyForwardedAria(name);
+    this.#applyPressed();
+    for (const name of forwardedAria) this.#forwardAria(name);
 
     this.#rendered = true;
-
-    if (DEV) this.#scheduleAccessibleNameCheck();
+    this.#checkAccessibleName();
   }
 
   #html(): string {
@@ -154,57 +160,44 @@ class UiButtonElement extends HTMLElement {
     this.#iconEl.append(icon);
   }
 
-  /**
-   * Writes `aria-pressed` on the control from the `pressed` property, never the reverse — the
-   * button never toggles itself. Absent, not `"false"`, when not pressed: a plain button carrying
-   * `aria-pressed="false"` would announce as a toggle.
-   */
+  /** `pressed` writes `aria-pressed="true"` on the control; absent removes the attribute entirely — never `"false"`. */
   #applyPressed(): void {
     if (this.pressed) this.#controlEl.setAttribute('aria-pressed', 'true');
     else this.#controlEl.removeAttribute('aria-pressed');
   }
 
-  /**
-   * Forwards one ARIA attribute from the (non-focusable) host to the inner control. The
-   * attribute stays on the host too — it has no role and is not focusable, so a duplicate there
-   * announces nothing, and removing consumer markup is not this component's business.
-   */
-  #applyForwardedAria(name: (typeof forwardedAria)[number]): void {
+  /** Forwards one ARIA attribute from the (non-focusable) host to the inner control. */
+  #forwardAria(name: string): void {
     const value = this.getAttribute(name);
     if (value !== null) this.#controlEl.setAttribute(name, value);
     else this.#controlEl.removeAttribute(name);
   }
 
+  /** Dev-only: `ui-button` takes no content — consumer children would be silently wiped by `#render`. */
+  #checkChildren(): void {
+    if (!DEV) return;
+    const hasContent = Array.from(this.childNodes).some(
+      (node) => node.nodeType !== Node.TEXT_NODE || node.textContent!.trim() !== '',
+    );
+    if (!hasContent) return;
+    console.error(
+      `${this.tagName.toLowerCase()}: takes no content — children are discarded. Use "label" and "icon" instead.`,
+    );
+  }
+
   /**
-   * Dev-only: one microtask after render, flags an icon-only button with no accessible name.
-   * Deferred so a consumer setting `label` right after connect isn't a false positive.
+   * Dev-only: an icon-only button with no accessible name is unusable for assistive tech.
+   * Deferred a microtask past first render so a consumer setting `label` right after connect
+   * (a common pattern) does not trip a false alarm.
    */
-  #scheduleAccessibleNameCheck(): void {
+  #checkAccessibleName(): void {
+    if (!DEV) return;
     queueMicrotask(() => {
-      if (this.#labelEl.childNodes.length > 0) return;
-      if (this.#controlEl.hasAttribute('aria-label') || this.#controlEl.hasAttribute('aria-labelledby')) return;
-      console.error(`${this.tagName.toLowerCase()}: icon-only button has no accessible name — set "label", "aria-label", or "aria-labelledby".`);
+      if (this.#labelEl.textContent) return;
+      if (this.#controlEl.getAttribute('aria-label')) return;
+      if (this.#controlEl.getAttribute('aria-labelledby')) return;
+      console.error(`${this.tagName.toLowerCase()}: icon-only button has no accessible name — set "label" or "aria-label".`);
     });
-  }
-
-  /**
-   * Dev-only: at connect, before the skeleton is written, flags consumer-supplied children.
-   * `ui-button` takes no content — they would otherwise be silently wiped by `#render`.
-   */
-  #checkChildrenSupplied(): void {
-    if (!this.#hasSuppliedChildren()) return;
-    console.error(`${this.tagName.toLowerCase()}: takes no content — use the "label" and "icon" attributes instead.`);
-  }
-
-  #hasSuppliedChildren(): boolean {
-    for (const node of this.childNodes) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        if ((node.textContent ?? '').trim() !== '') return true;
-      } else {
-        return true;
-      }
-    }
-    return false;
   }
 
   /** Moves a value written before class registration off the instance so the prototype accessor takes over. */
