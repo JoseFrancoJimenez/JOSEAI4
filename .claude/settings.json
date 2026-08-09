@@ -10,7 +10,8 @@
       "Read(//tmp/**)",
       "Bash(pnpm --filter lib vitest run ui-button)",
       "Bash(npx tsc *)",
-      "Bash(git --no-pager diff -- docs/tasks/button-component.md)"
+      "Bash(git --no-pager diff -- docs/tasks/button-component.md)",
+      "Bash(echo \"---exit $?---\")"
     ]
   },
   "model": "opusplan"
