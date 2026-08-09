@@ -1,57 +1,115 @@
-# ui-card — plan update: constrained height and the scrolling body
+# ui-card — plan update: section layout and constrained height
 
-An amendment to `docs/ui-card-plan.md`. Apply it before Task 3; nothing here changes the component's classification, interface, or accessibility contract.
+An amendment to `docs/ui-card-plan.md`. Apply it before Task 3. Nothing here changes the component's classification, public interface, or accessibility contract — it is all CSS.
 
-**Trigger.** `docs/ui-card-plan.md` §10 deferred `--ui-card-body-max-height` with the words *"decide when `widget-popover` is planned, not before."* That widget is now planned, so the question is due. The answer is **no knob** — and the reason it took until now to see is that the constraint turns out to come from the wrong direction.
+Two things brought it about, and they are worth keeping separate because only one of them was foreseen:
+
+- **An omission.** The plan declared three outlets and never said how each arranges *its own* children. That was a gap from the start, not a consequence of anything below.
+- **A deferred question, now due.** `docs/ui-card-plan.md` §10 parked `--ui-card-body-max-height` with the words *"decide when `widget-popover` is planned, not before."* That widget is now planned.
 
 ---
 
-## 1. What changed in the reasoning
+## 1. The omission: the outlets had no layout of their own
 
-The card plan assumed a consumer would ask the card to limit its own body. `docs/widget-popover-plan.md` Task 6 does the opposite: it caps **the popover host** with `--widget-popover-max-height`. The card is not being asked to know a height. It is being asked to **behave correctly as a flex column when something above it is constrained** — which is not public surface, it is being a correct flex column.
+`widget-popover` fills the header with `[title, close button]`. With no `display` on the header outlet those stack vertically. The same applies to a footer holding two action buttons.
 
-That reframing is the whole update. A knob would have added a public property, documentation, and a second way to express a constraint that already has one.
+This is squarely allowed: skill §10 says the outlet controls **placement, size, and spacing** of region content, and that only typography and colour belong to the consumer. Arranging two supplied nodes in a row is placement.
 
-## 2. The change
+**Header and footer become flex rows. The body stays `display: block`,** which is its default and a deliberate choice rather than an oversight — say so in a comment. The body holds arbitrary content: paragraphs, lists, a whole widget. Making it a flex container turns every child into a flex item, stops margins from collapsing, and breaks ordinary prose in ways nobody debugging a card would think to look for. Header and footer are strips of components; the body is a document.
 
-Three declarations in `ui-card.css`:
+## 2. Two height controls, and both are wanted
+
+The original plan assumed one mechanism and rejected it. There are two, they work from opposite directions, and they do not compete:
+
+- **From outside.** A consumer caps its own host — `widget-popover` does this with `--widget-popover-max-height`. The card's body then takes whatever slack is left and scrolls inside it. This needs no API at all; it needs the card to behave correctly as a flex column.
+- **From inside.** `--ui-card-body-max-height`, default `none`, caps the body directly. The card's total height is then header + body + footer, which is the predictable one: the consumer sets a number and gets it.
+
+The effective height is whichever binds first, so both can be present without either being wrong. With the inside knob available, a consumer can cap a card that has no constrained ancestor at all — which the outside mechanism cannot do.
+
+Three declarations carry the outside case:
 
 ```css
-.ui-card__header, .ui-card__footer { flex: none; }
-.ui-card__body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+flex: none;        /* header and footer: never grow, never shrink */
+flex: 1 1 auto;    /* body: takes the slack */
+min-height: 0;     /* body: without it, refuses to shrink and overflows instead */
 ```
 
-`min-height: 0` is the load-bearing one and the one that gets dropped: without it a flex item refuses to shrink below its content size, so the body overflows the cap instead of scrolling inside it. Comment it, or it looks removable.
+`min-height: 0` is the load-bearing one and the one that gets deleted by someone tidying up. Comment it.
 
-Inert until something constrains the card. Unconstrained, there is no overflow, `overflow: auto` shows no scrollbar, and `flex: 1 1 auto` on the only growing child changes nothing.
+## 3. The footer alignment knob
 
-## 3. Costs to own
+`--ui-card-footer-align`, default `flex-end`.
 
-Two, and both belong in the plan rather than in a surprise later:
+The reasoning is worth recording, because a knob usually needs more justification than this one does. `justify-content` lives on `.ui-card__footer` — an internal class the consumer may not touch (`docs/plan.md` §4). So either the card decides the alignment or **nobody can**. There is no "leave it to the consumer" option here.
 
-- **`overflow: auto` makes the body a scroll container unconditionally**, which clips anything a child tries to render outside it — a tooltip or a menu opened from inside the body would be cut off. The host already carries `overflow: hidden` (`docs/ui-card-plan.md` Task 3), so this narrows an existing constraint rather than introducing one. If a consumer ever needs to escape it, the answer is the top layer, not loosening this rule.
-- **A scroll container with no focusable content inside it is not reliably keyboard-scrollable across browsers.** Behaviour here has changed in recent years and should not be assumed in either direction. This goes to the manual pass (§6), not to an assertion in the plan.
+Given that, the default should be the common case: trailing actions, the convention for a card or dialog footer. And given that a default which cannot be overridden is a trap, it becomes a custom property rather than a hardcoded value — which is exactly skill §10's two-tier theming, a per-component knob named after the tag, with a fallback.
 
-## 4. Why there is no test
+The header needs no equivalent. Its only asymmetry is `widget-popover`'s close button, and the popover pushes **its own node** with `margin-inline-start: auto` from its own stylesheet. That is a component styling a node it owns, not a consumer reaching into the card.
 
-`docs/testing.md` §3 is explicit: never assert on computed layout, because **jsdom performs no layout**. There is nothing meaningful to assert — no `getBoundingClientRect`, no `scrollHeight`, no computed `overflow` worth pinning. This is a CSS-only change verified visually.
+## 4. The CSS — replaces the section rules in Task 3
 
-That is not a gap to apologise for; it is the rule working. The verification moves to the sandbox and the manual pass.
+```css
+.ui-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-## 5. Edits to apply to `docs/ui-card-plan.md`
+.ui-card__header,
+.ui-card__footer {
+  display: flex;                 /* arranges supplied content in a row */
+  align-items: center;
+  gap: var(--ui-card-gap, 0.5rem);
+  flex: none;                    /* as a column item: fixed */
+}
 
-**§3, Out list** — remove `--ui-card-body-max-height` from the out-of-scope items, and replace the bullet that explains it with:
+.ui-card__footer {
+  justify-content: var(--ui-card-footer-align, flex-end);
+}
 
-> **A body height knob (`--ui-card-body-max-height`) was considered and rejected.** The constraint comes from the consumer's own host, not from the card: `widget-popover` caps its host and the card's body shrinks and scrolls under it (Task 3). A knob would be a second way to say the same thing, with public surface attached.
+.ui-card__body {
+  /* display stays block on purpose: arbitrary content needs normal flow */
+  flex: 1 1 auto;                /* as a column item: takes the slack */
+  min-height: 0;                 /* without this it will not shrink and overflows the cap */
+  max-height: var(--ui-card-body-max-height, none);
+  overflow: auto;
+}
+```
 
-**Task 3, CSS** — add the three declarations from §2 above, with the `min-height: 0` comment.
+The rest of Task 3 is unchanged — the pre-upgrade rule, the separator rule, the `:empty` rule, per-section padding, and the existing knobs.
 
-**Task 4, sandbox demo** — add one case: a card inside a container with a fixed height, holding a long body, a filled header, and a filled footer. Confirm the header and footer stay put, the body scrolls, and the separators stay attached to the sections rather than scrolling away with the content.
+**One interaction to check when writing it:** `.ui-card [data-outlet]:empty { display: none; }` must keep beating `.ui-card__header { display: flex; }`. As written it does, on specificity — three simple selectors against one. Do not "simplify" the hide rule to `[data-outlet]:empty` or an empty header will render as a flex row of nothing.
 
-**§10, Open questions** — delete the `--ui-card-body-max-height` entry. The other two entries stand: the shared token tier is still unanswered and still blocks Task 3, and the `:empty` whitespace discipline note is unaffected.
+**Knobs after this change:** `--ui-card-padding`, `--ui-card-gap`, `--ui-card-radius`, `--ui-card-border-width`, `--ui-card-border-color`, `--ui-card-background`, `--ui-card-body-max-height`, `--ui-card-footer-align`.
 
-**§11, Done** — add to the manual pass: with the card height constrained, the body scrolls, the header and footer do not, and the body is reachable by keyboard scrolling.
+## 5. Costs to own
 
-## 6. Done
+- **`overflow: auto` makes the body a scroll container unconditionally**, which clips anything a child renders outside it — a tooltip or menu opened from within the body would be cut. The host already carries `overflow: hidden`, so this narrows an existing constraint rather than adding one. A component that needs to escape it belongs in the top layer, not in a looser rule here.
+- **A scroll container with no focusable content is not reliably keyboard-scrollable across browsers.** Behaviour has changed in recent years and should not be assumed in either direction. Manual pass, not an assertion.
+- **`flex-end` is a visual opinion shipped in the library.** The knob is the escape hatch, and its existence is what makes the opinion acceptable.
 
-The card's own gates are unchanged — `pnpm test`, `pnpm typecheck`, `pnpm lint`. This amendment adds no test, so the evidence it works is the sandbox case in §5 and the manual line added to §11.
+## 6. Why there are no new tests
+
+`docs/testing.md` §3: never assert on computed layout, because **jsdom performs no layout**. Every change here is a declaration whose effect is geometric. There is nothing honest to assert — not the computed `display`, not `scrollHeight`, not the resolved value of a custom property that only matters once something is laid out.
+
+The verification is the sandbox case in §7 and the manual pass. That is the rule working, not a gap.
+
+## 7. Edits to apply to `docs/ui-card-plan.md`
+
+**§3, In list** — add: `--ui-card-body-max-height` and `--ui-card-footer-align` as public knobs; row layout for the header and footer outlets.
+
+**§3, Out list** — remove `--ui-card-body-max-height`, and replace the bullet explaining its absence with:
+
+> **`--ui-card-body-max-height` is in, and so is a second, independent path to the same result.** A consumer may cap the card's own host instead and let the body take the slack; `widget-popover` does exactly that. Neither makes the other redundant — the inside knob works with no constrained ancestor, the outside one needs no API.
+
+**Task 3** — replace the section rules with §4 above, including the specificity note.
+
+**Task 4, sandbox demo** — add three cases: a card inside a fixed-height container with a long body (header and footer stay put, body scrolls, separators do not scroll away); the same effect via `--ui-card-body-max-height` on a card with no constrained ancestor; and a footer with two buttons, plus one with `--ui-card-footer-align: flex-start`.
+
+**§10, Open questions** — delete the `--ui-card-body-max-height` entry. The other two stand: the shared token tier is still unanswered and still blocks Task 3, and the `:empty` whitespace note is unaffected.
+
+**§11, Done** — add to the manual pass: with the height constrained by either route, the body scrolls while the header and footer do not, the body is reachable by keyboard scrolling, and footer actions sit where the default says they should.
+
+## 8. Done
+
+The card's gates are unchanged: `pnpm test`, `pnpm typecheck`, `pnpm lint`. This amendment adds no test, so its evidence is the sandbox cases in §7 and the lines added to §11.

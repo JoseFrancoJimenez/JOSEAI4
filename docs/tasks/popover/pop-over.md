@@ -35,7 +35,7 @@ MVVM level 2 (`docs/plan.md` §2): view-state inlined in the element, no ViewMod
 
 **Out — do not build, do not leave hooks for:** modal mode; a backdrop with light-dismiss; collision detection, edge flipping, or a pointer/arrow tail; drag-to-move; resize; animation or transition API; anchoring to an element (CSS anchor positioning); a `CustomEvent` of any kind; an `open` setter; a `destroy()`; nesting rules for popovers inside popovers; stacking order beyond what the top layer gives; RTL handling.
 
-**Height is imposed from outside, and needs no new card API.** `--widget-popover-max-height` caps the host; `ui-card` is a flex column whose body shrinks and scrolls under that cap. The `--ui-card-body-max-height` knob once expected here is not built — see `docs/ui-card-plan-update.md`.
+**Height has two routes, and this widget uses the one that needs no card API.** `--widget-popover-max-height` caps the host; `ui-card`'s body then takes the slack and scrolls. The card also exposes `--ui-card-body-max-height` for consumers with no constrained host, which this widget does not need. See `docs/ui-card-plan-update.md`.
 
 Two rejected alternatives worth recording, because they look obviously right:
 
@@ -207,7 +207,8 @@ Skipping `this`, and only those currently open. **The DOM is the registry** — 
 - Placement reads `--widget-popover-x` / `--widget-popover-y` with fallbacks, so a popover that was never positioned still lands somewhere sane and an app can place one entirely from its own stylesheet.
 - `positionAt` writes those two properties and nothing else.
 - Knobs with fallbacks, named after the tag: `--widget-popover-x`, `--widget-popover-y`, `--widget-popover-width`, `--widget-popover-max-height`. Frame appearance belongs to `ui-card`'s knobs, not duplicated here.
-- **`--widget-popover-max-height` caps the host, and that is the entire height story.** The card is a flex column whose body shrinks and scrolls when something above it constrains the height, so a long feature record scrolls with no card-side API and nothing for this widget to configure. Verified in the sandbox, not in a test — jsdom performs no layout (`docs/testing.md` §3).
+- **`--widget-popover-max-height` caps the host, and the card does the rest.** The card's body takes the slack and scrolls, so a long feature record scrolls with nothing to configure here. Verified in the sandbox, not in a test — jsdom performs no layout (`docs/testing.md` §3).
+- **`.widget-popover__close { margin-inline-start: auto; }`** pushes the close button to the trailing edge of the card's header. This widget styles a node it created, by its own class — not the card's internals (`docs/plan.md` §4).
 - `::backdrop` is available and left unstyled — under `manual` there is no light-dismiss, so a visible backdrop would promise a dismissal that does not exist.
 - Low specificity, no `!important`.
 
