@@ -22,7 +22,7 @@ It is the library's first component and the first practical test of the authorin
 
 **Out — do not build, do not leave hooks for:** content regions, `setContent`, harvesting; variants (primary/secondary/danger); sizes; loading state; `href`/anchor rendering; `name` and form participation; a `control` getter exposing the inner button; soft-disabled (`aria-disabled`) mode; custom events; a tab-stop property; RTL handling.
 
-`name`/form participation, soft-disabled, regions, and a `tabStop` property are all non-breaking to add later. They are out because there is no present need. (`tabStop` would only be needed if a consumer ever adopts a roving-tabindex model — see `widget-segmented-control-plan.md` §11.)
+`name`/form participation, soft-disabled, regions, and a `tabStop` property are all non-breaking to add later. They are out because there is no present need. (`tabStop` would only be needed if a consumer ever adopts a roving-tabindex model — see `widget-button-group-plan.md` §11.)
 
 **The consequence to own:** with no regions, `<ui-button>Save</ui-button>` is not supported. Children are wiped at render (`this.innerHTML = html()`), silently. That is the most natural way to write a button in HTML, so it gets a dev warning — Task 4.
 
@@ -171,7 +171,7 @@ ARIA list: each forwarded attribute reaches the control at render; one set **aft
 - `.ui-button__control[aria-pressed='true']` → pressed appearance. State comes from the ARIA attribute, never a JS-toggled class (`docs/accessibility.md` §7).
 - `:focus-visible` ring on the control, from `--ui-focus-ring` with a fallback.
 - Layout only — no typography or colour beyond `inherit`.
-- Per-component knobs named after the tag (e.g. `--ui-button-gap`), each with a fallback.
+- Per-component knobs named after the tag (e.g. `--ui-button-gap`, `--ui-button-radius`), each with a fallback. `--ui-button-radius` is public surface with a consumer: `widget-button-group` shapes end corners through it instead of touching internals.
 
 ## Task 4 — dev-only checks
 
