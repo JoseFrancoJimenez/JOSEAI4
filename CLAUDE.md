@@ -41,6 +41,10 @@ This file is guidance; tests and lint are the enforcement.
 
 Run the closest test, plus typecheck and lint, before reporting a task complete. Run them in the terminal, not in chat.
 
+## Dev server
+
+Never start, stop, or poll a dev server (`pnpm dev`, `vite`, `curl`/fetch against a local port, etc.) without the user's explicit consent — it burns tokens for little signal. If a change needs visual or interactive verification, ask the user to run it and tell them exactly what to check instead of doing it yourself.
+
 ## Language
 
 Code, comments, and commit messages are always in English.
