@@ -85,6 +85,75 @@
       </ui-card>
     </section>
 
+    <section>
+      <h2>Constrained by an outside container — body scrolls, header/footer don't</h2>
+      <div style="height: 200px; border: 1px dashed #999">
+        <ui-card style="height: 100%">
+          <h3 data-region="header">Parcel history</h3>
+          <p>Entry 1: created.</p>
+          <p>Entry 2: boundary adjusted.</p>
+          <p>Entry 3: area recalculated.</p>
+          <p>Entry 4: owner changed.</p>
+          <p>Entry 5: zoning updated.</p>
+          <p>Entry 6: survey attached.</p>
+          <p>Entry 7: notes added.</p>
+          <p>Entry 8: reviewed.</p>
+          <ui-button data-region="footer" label="Close"></ui-button>
+        </ui-card>
+      </div>
+    </section>
+
+    <section>
+      <h2>Constrained via --ui-card-body-max-height — no constrained ancestor needed</h2>
+      <ui-card style="--ui-card-body-max-height: 120px">
+        <h3 data-region="header">Parcel history</h3>
+        <p>Entry 1: created.</p>
+        <p>Entry 2: boundary adjusted.</p>
+        <p>Entry 3: area recalculated.</p>
+        <p>Entry 4: owner changed.</p>
+        <p>Entry 5: zoning updated.</p>
+        <p>Entry 6: survey attached.</p>
+        <p>Entry 7: notes added.</p>
+        <p>Entry 8: reviewed.</p>
+        <ui-button data-region="footer" label="Close"></ui-button>
+      </ui-card>
+    </section>
+
+    <section>
+      <h2>Footer alignment — default (flex-end) vs. --ui-card-footer-align: flex-start</h2>
+      <ui-card>
+        <h3 data-region="header">Confirm delete</h3>
+        This cannot be undone.
+        <ui-button data-region="footer" label="Cancel"></ui-button>
+        <ui-button data-region="footer" label="Delete"></ui-button>
+      </ui-card>
+      <ui-card style="--ui-card-footer-align: flex-start; margin-top: 12px">
+        <h3 data-region="header">Confirm delete</h3>
+        This cannot be undone.
+        <ui-button data-region="footer" label="Cancel"></ui-button>
+        <ui-button data-region="footer" label="Delete"></ui-button>
+      </ui-card>
+    </section>
+
+    <section>
+      <h2>Body with form controls — checkboxes and a dropdown</h2>
+      <ui-card>
+        <h3 data-region="header">Layer options</h3>
+        <label style="display: block"><input type="checkbox" checked /> Roads</label>
+        <label style="display: block"><input type="checkbox" /> Parcels</label>
+        <label style="display: block"><input type="checkbox" checked /> Hydrography</label>
+        <label style="display: block; margin-top: 8px">
+          Basemap
+          <select>
+            <option>Streets</option>
+            <option>Satellite</option>
+            <option>Topographic</option>
+          </select>
+        </label>
+        <ui-button data-region="footer" label="Apply"></ui-button>
+      </ui-card>
+    </section>
+
     <script type="module" src="/src/ui-card.ts"></script>
   </body>
 </html>

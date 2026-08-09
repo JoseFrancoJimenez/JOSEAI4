@@ -25,3 +25,29 @@ ui-card:not(:defined) {
       var(--ui-card-border-color, color-mix(in srgb, currentColor 20%, transparent));
   }
 }
+
+/*
+ * Specificity check: this must keep beating `.ui-card__header { display: flex; }` below
+ * (three simple selectors here vs. one there) or an empty header renders as a flex row of
+ * nothing. Do not "simplify" the rule above to `[data-outlet]:empty`.
+ */
+
+.ui-card__header,
+.ui-card__footer {
+  display: flex; /* arranges supplied content in a row */
+  align-items: center;
+  gap: var(--ui-card-gap, 0.5rem);
+  flex: none; /* as a column item: never grows, never shrinks */
+}
+
+.ui-card__footer {
+  justify-content: var(--ui-card-footer-align, flex-end);
+}
+
+.ui-card__body {
+  /* display stays block on purpose: arbitrary content needs normal flow, not flex items */
+  flex: 1 1 auto; /* as a column item: takes the slack */
+  min-height: 0; /* load-bearing: without it the body refuses to shrink and overflows the cap */
+  max-height: var(--ui-card-body-max-height, none);
+  overflow: auto;
+}

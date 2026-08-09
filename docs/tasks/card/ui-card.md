@@ -20,14 +20,14 @@ It exists to be composed. Two consumers are foreseen: a positioned, non-modal **
 
 ## 3. Scope
 
-**In:** three content regions (`header`, `default`, `footer`); `setContent`; empty outlets hidden by CSS; separators between adjacent non-empty sections; per-component CSS knobs; the pre-upgrade visibility rule.
+**In:** three content regions (`header`, `default`, `footer`); `setContent`; empty outlets hidden by CSS; separators between adjacent non-empty sections; per-component CSS knobs, including `--ui-card-body-max-height` and `--ui-card-footer-align`; row layout for the header and footer outlets; the pre-upgrade visibility rule.
 
-**Out — do not build, do not leave hooks for:** a `media` region; `header-actions` / `footer-actions` regions; appearance variants (accent/filled/outlined/plain); sizes; `orientation="horizontal"`; the `with-header` / `with-footer` / `with-media` attributes; any role or landmark semantics; a close button; custom events; an `open` property; positioning; `toggle()`; a `body` alias for `default`; `--ui-card-body-max-height`; **any attribute at all**.
+**Out — do not build, do not leave hooks for:** a `media` region; `header-actions` / `footer-actions` regions; appearance variants (accent/filled/outlined/plain); sizes; `orientation="horizontal"`; the `with-header` / `with-footer` / `with-media` attributes; any role or landmark semantics; a close button; custom events; an `open` property; positioning; `toggle()`; a `body` alias for `default`; **any attribute at all**.
 
 Three of those deserve their reason recorded:
 
 - **The `with-*` booleans** in the reference implementation (Web Awesome) exist only for SSR and for the absence of a `:has-slotted` pseudo-class. We do no SSR, and `:empty` on an outlet covers the same need at zero cost. Copying them would be the one place where following the reference is a direct mistake.
-- **`--ui-card-body-max-height`** is the expected *first* addition: a popup showing a long feature record needs a scrollable body, and a consumer may not style `.ui-card__body` (`docs/plan.md` §4). It is out because that popup does not exist yet. One knob with a fallback, non-breaking to add.
+- **`--ui-card-body-max-height` is in, and so is a second, independent path to the same result.** A consumer may cap the card's own host instead and let the body take the slack; `widget-popover` does exactly that. Neither makes the other redundant — the inside knob works with no constrained ancestor, the outside one needs no API.
 - **`data-region="body"`** as an alias for `default` was considered and rejected: two names for one outlet, and `default` is already what the helper produces for unmarked children.
 
 **The consequence to own.** `ui-card` accepts children, so its silent-loss case is not `ui-button`'s. It is the typo:
@@ -166,7 +166,7 @@ Add `regionNames`; harvest in `connectedCallback` **before anything writes to th
 
 `ui-card.css`, imported by `ui-card.ts`. Block is the full tag name.
 
-- `display: flex; flex-direction: column` on `.ui-card`.
+- `display: flex; flex-direction: column; overflow: hidden` on `.ui-card`.
 - `ui-card:not(:defined) { visibility: hidden; }` — tag-based, the one exception to selecting by the host class (skill §10).
 - `.ui-card [data-outlet]:empty { display: none; }`.
 - **Separators.** One rule, not three:
@@ -178,15 +178,19 @@ Add `regionNames`; harvest in `connectedCallback` **before anything writes to th
   ```
 
   A non-empty section preceded by another non-empty section draws its own top edge. This is correct in every combination without a single special case — including **header + footer with no body**, where a naive "border below the header, border above the footer" pair would draw a double line. Verify that case in the sandbox; it is the one the CSS-only approach could surprise on.
-- Padding on each **section**, not on the host, so a separator spans the full width.
+- **Header and footer are flex rows; the body stays `display: block`.** The outlet controls placement of region content (skill §10), and arranging supplied nodes in a row is placement. The body holds arbitrary content — paragraphs, lists, a whole widget — so it keeps normal flow rather than becoming a flex container, which would turn every child into a flex item and break ordinary prose. Say so in a comment, or the omission reads as an oversight.
+- **Two independent height controls, both wanted.** From outside: a consumer caps its own host (`widget-popover` does this with `--widget-popover-max-height`) and the body takes the slack — needs no API, only correct flex-column behaviour: `flex: none` on header and footer, `flex: 1 1 auto` and `min-height: 0` on the body. `min-height: 0` is load-bearing and the one that gets deleted by someone tidying up — comment it. From inside: `--ui-card-body-max-height`, default `none`, caps the body directly so the card's total height is header + body + footer. Both may be present; whichever binds first wins.
+- **`--ui-card-footer-align`**, default `flex-end`, drives `justify-content` on `.ui-card__footer`. `justify-content` lives on an internal class the consumer may not touch (`docs/plan.md` §4), so the card must decide it or nobody can. Trailing actions is the default because it is the common case for a card or dialog footer. The header needs no equivalent knob — its only asymmetry is `widget-popover`'s close button, pushed by the popover's own stylesheet on a node it owns.
+- Padding on each **section**, not on the host, so a separator spans the full width. `--ui-card-gap` spaces the flex items within the header/footer row.
 - `overflow: hidden` on the host so the radius clips oversized content (an image dropped into the body). Reversible if it ever fights a consumer.
-- Knobs, each with a fallback, named after the tag: `--ui-card-padding`, `--ui-card-radius`, `--ui-card-border-width`, `--ui-card-border-color`, `--ui-card-background`. The separator reuses the border colour deliberately — one colour, coherent result.
+- Knobs, each with a fallback, named after the tag: `--ui-card-padding`, `--ui-card-gap`, `--ui-card-radius`, `--ui-card-border-width`, `--ui-card-border-color`, `--ui-card-background`, `--ui-card-body-max-height`, `--ui-card-footer-align`. The separator reuses the border colour deliberately — one colour, coherent result.
 - Layout and border only. No typography, no colour beyond `inherit` and the knobs above. The border colour fallback should derive from the inherited colour rather than name one (see §10, open question).
 - Low specificity (`:where()` where useful), no `!important`.
+- **Specificity check.** `.ui-card [data-outlet]:empty { display: none; }` must keep beating `.ui-card__header { display: flex; }`. As written it does — three simple selectors against one. Do not "simplify" the hide rule to `[data-outlet]:empty` or an empty header will render as a flex row of nothing.
 
 ## Task 4 — sandbox demo
 
-`src/apps/sandbox/ui-card.html`, exercising every path: all three sections; body only; header + body; body + footer; **header + footer with no body**; bare text as the body; a `<ui-button data-region="footer">`; a programmatic `setContent` on a timer; a card built entirely in code whose header is a fragment of title + close `<ui-button>` — the popup's composition path rehearsed without the popup; and one card with a deliberate `data-region` typo, to see the helper's error in a real console.
+`src/apps/sandbox/ui-card.html`, exercising every path: all three sections; body only; header + body; body + footer; **header + footer with no body**; bare text as the body; a `<ui-button data-region="footer">`; a programmatic `setContent` on a timer; a card built entirely in code whose header is a fragment of title + close `<ui-button>` — the popup's composition path rehearsed without the popup; one card with a deliberate `data-region` typo, to see the helper's error in a real console; a card inside a fixed-height container with a long body (header and footer stay put, body scrolls, separators do not scroll away); the same effect via `--ui-card-body-max-height` on a card with no constrained ancestor; and a footer with two buttons, plus one with `--ui-card-footer-align: flex-start`.
 
 This is where the API gets judged. If something feels awkward here, fix the design, not the demo.
 
@@ -205,11 +209,10 @@ Expected candidates:
 Raise rather than work around.
 
 - **Shared token tier.** Skill §10 names only `--ui-focus-ring`. If a shared surface/radius/border token exists or is planned, `--ui-card-radius` and `--ui-card-border-color` must defer to it instead of carrying literal fallbacks. Settle before Task 3 — and do not create a token file for one component, which is the call `ui-button` already made.
-- **`--ui-card-body-max-height`** — decide when `widget-popup` is planned, not before.
 - Whether the separator rule's `:empty` dependence needs to be called out anywhere beyond §5's zero-whitespace note. It is the second thing that breaks silently if an outlet is authored with a newline inside it.
 
 ## 11. Done
 
 Per task: `pnpm test` (closest suite), `pnpm typecheck`, `pnpm lint`.
 
-For the component overall: the checklist in `docs/accessibility.md` §10 walked with its N/As recorded, plus a manual pass — Tab runs through the consumer's content in visual order, an empty section takes no space and draws no separator, and a screen reader announces the supplied heading and nothing the card invented.
+For the component overall: the checklist in `docs/accessibility.md` §10 walked with its N/As recorded, plus a manual pass — Tab runs through the consumer's content in visual order, an empty section takes no space and draws no separator, a screen reader announces the supplied heading and nothing the card invented, and — with the height constrained by either route — the body scrolls while the header and footer do not, the body is reachable by keyboard scrolling, and footer actions sit where the default says they should.
