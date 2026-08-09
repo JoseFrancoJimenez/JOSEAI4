@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ui-card demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 24px;
+      }
+      section {
+        margin-bottom: 24px;
+        max-width: 320px;
+      }
+      h2 {
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <h2>All three sections</h2>
+      <ui-card>
+        <h3 data-region="header">Parcel 12-B</h3>
+        Area: 1,240 m²
+        <ui-button data-region="footer" label="Close"></ui-button>
+      </ui-card>
+    </section>
+
+    <section>
+      <h2>Body only</h2>
+      <ui-card>
+        <span data-region="default">Nothing else supplied.</span>
+      </ui-card>
+    </section>
+
+    <section>
+      <h2>Header + body (no footer)</h2>
+      <ui-card>
+        <h3 data-region="header">Layers</h3>
+        Roads, parcels, hydrography.
+      </ui-card>
+    </section>
+
+    <section>
+      <h2>Body + footer (no header)</h2>
+      <ui-card>
+        Selection cleared.
+        <ui-button data-region="footer" label="Undo"></ui-button>
+      </ui-card>
+    </section>
+
+    <section>
+      <h2>Header + footer, no body — one separator, not two</h2>
+      <ui-card>
+        <h3 data-region="header">Confirm</h3>
+        <ui-button data-region="footer" label="OK"></ui-button>
+      </ui-card>
+    </section>
+
+    <section>
+      <h2>Bare text as the body</h2>
+      <ui-card>Area: 1,240 m²</ui-card>
+    </section>
+
+    <section>
+      <h2>Programmatic setContent on a timer (2s)</h2>
+      <ui-card id="timer-demo">
+        <h3 data-region="header">Status</h3>
+        Waiting…
+      </ui-card>
+    </section>
+
+    <section>
+      <h2>Built entirely in code — fragment header of title + close button</h2>
+      <ui-card id="popup-demo"></ui-card>
+    </section>
+
+    <section>
+      <h2>Deliberate data-region typo — check the console</h2>
+      <ui-card>
+        <span data-region="haeder">Title</span>
+      </ui-card>
+    </section>
+
+    <script type="module" src="/src/ui-card.ts"></script>
+  </body>
+</html>

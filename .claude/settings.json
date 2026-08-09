@@ -27,7 +27,9 @@
       "Bash(echo \"typecheck exit:$?\")",
       "Bash(pnpm lint *)",
       "Bash(echo \"lint exit:$?\")",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "Bash(grep -A 15 \"regions.ts$\")",
+      "Bash(grep -B1 -A5 \"regions.ts$\\\\|regions.test\")"
     ]
   },
   "model": "opusplan"

@@ -2,7 +2,7 @@
 
 Read this when building a component that accepts consumer content, or when changing `src/lib/core/regions.ts`. Authoring rules for regions live in the `web-components` skill §7; this file is the helper's own specification.
 
-> **Status:** built and pinned by its own suite (`regions.test.ts`). **It currently has no consumer** — `ui-button` was written as its first, then dropped regions (see `docs/rationale.md`). Kept on purpose, not by omission: the next widget with a header, a footer, or an empty-state needs it, and the mechanism is the one piece of this repo that is genuinely hard to get right twice. Revisit if it is still unused when the third component ships.
+> **Status:** built and pinned by its own suite (`regions.test.ts`). **First consumer: `ui-card`** — `ui-button` was written as an earlier candidate, then dropped regions (see `docs/rationale.md`). The `accepted` parameter and the unclaimed-region warning (§5) were added alongside `ui-card`, exercising the helper end to end for the first time.
 
 ## 1. What it is and where it lives
 
@@ -74,9 +74,6 @@ Pinned in `regions.test.ts`:
 - Strings insert as text (`fillRegion(o, '<b>x</b>')` yields no `<b>`).
 - A fragment's children all move.
 - The readyState warning fires only in the loading state.
-
-To add with §3 and §5:
-
 - Two children with the same `data-region` both land, in document order.
 - A harvested name outside `accepted` warns once, naming the region.
 - No `accepted` argument → no unclaimed warning (the check is opt-in, not a trap).

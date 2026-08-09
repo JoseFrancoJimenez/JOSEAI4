@@ -10,15 +10,13 @@ const DEV: boolean = import.meta.env.DEV;
  * `childNodes` so bare text survives; whitespace-only text nodes are skipped so pretty-printed
  * markup does not suppress a component's default. Call once, in `connectedCallback`, before
  * anything else — a second call would harvest the component's own rendered skeleton.
+ *
+ * `accepted` is the calling component's declared region names (its `regionNames`). It is
+ * optional and dev-only in effect: a harvested name outside it means the content is claimed by
+ * no outlet and about to be destroyed, so it is `console.error`'d as the only evidence.
  */
-function harvestRegions(host: HTMLElement): HarvestedRegions {
-  if (DEV && document.readyState === 'loading') {
-    console.warn(
-      `${host.tagName.toLowerCase()}: harvested while document.readyState is "loading" — ` +
-        'a classic blocking script may have registered this element mid-parse, before its ' +
-        'children were fully present. Likely a false positive for an inline script during initial parse.',
-    );
-  }
+function harvestRegions(host: HTMLElement, accepted?: readonly string[]): HarvestedRegions {
+  warnIfLoading(host);
 
   const regions: HarvestedRegions = new Map();
   const nodes = Array.from(host.childNodes);
@@ -36,7 +34,30 @@ function harvestRegions(host: HTMLElement): HarvestedRegions {
   }
 
   host.replaceChildren();
+  warnUnclaimed(host, regions, accepted);
+
   return regions;
+}
+
+function warnIfLoading(host: HTMLElement): void {
+  if (!DEV || document.readyState !== 'loading') return;
+  console.warn(
+    `${host.tagName.toLowerCase()}: harvested while document.readyState is "loading" — ` +
+      'a classic blocking script may have registered this element mid-parse, before its ' +
+      'children were fully present. Likely a false positive for an inline script during initial parse.',
+  );
+}
+
+/** A harvested region name outside `accepted` means its content is claimed by no outlet and about to be destroyed. */
+function warnUnclaimed(host: HTMLElement, regions: HarvestedRegions, accepted?: readonly string[]): void {
+  if (!DEV || !accepted) return;
+  for (const name of regions.keys()) {
+    if (accepted.includes(name)) continue;
+    console.error(
+      `${host.tagName.toLowerCase()}: unrecognised content region "${name}" — its content is discarded. ` +
+        `Accepted regions: ${accepted.join(', ')}.`,
+    );
+  }
 }
 
 /** Replaces `outlet`'s children with `content`. A string enters as text, never parsed as HTML; a node or fragment is moved as-is. */

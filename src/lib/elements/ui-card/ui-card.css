@@ -1,0 +1,27 @@
+ui-card:not(:defined) {
+  visibility: hidden;
+}
+
+.ui-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: inherit;
+  background: var(--ui-card-background, transparent);
+  border: var(--ui-card-border-width, 1px) solid
+    var(--ui-card-border-color, color-mix(in srgb, currentColor 20%, transparent));
+  border-radius: var(--ui-card-radius, 4px);
+
+  :where([data-outlet]) {
+    padding: var(--ui-card-padding, 12px);
+  }
+
+  [data-outlet]:empty {
+    display: none;
+  }
+
+  [data-outlet]:not(:empty) ~ [data-outlet]:not(:empty) {
+    border-block-start: var(--ui-card-border-width, 1px) solid
+      var(--ui-card-border-color, color-mix(in srgb, currentColor 20%, transparent));
+  }
+}

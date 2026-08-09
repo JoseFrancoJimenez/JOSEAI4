@@ -44,6 +44,14 @@ describe('harvestRegions', () => {
     expect(regions.get('icon')?.querySelectorAll('i').length).toBe(2);
   });
 
+  it('merges two children with the same data-region, in document order', () => {
+    const el = host('<span data-region="footer">a</span><span data-region="footer">b</span>');
+    const regions = harvestRegions(el);
+    expect(regions.get('footer')?.textContent).toBe('ab');
+  });
+});
+
+describe('harvestRegions dev warnings', () => {
   it('warns only when document.readyState is "loading"', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const readyState = vi.spyOn(document, 'readyState', 'get');
@@ -58,6 +66,28 @@ describe('harvestRegions', () => {
 
     readyState.mockRestore();
     warn.mockRestore();
+  });
+
+  it('a harvested name outside accepted warns once, naming the region', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    harvestRegions(host('<span data-region="lable">x</span>'), ['header', 'default', 'footer']);
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0]?.[0]).toContain('lable');
+    error.mockRestore();
+  });
+
+  it('no accepted argument means no unclaimed warning', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    harvestRegions(host('<span data-region="lable">x</span>'));
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+
+  it('a name inside accepted does not warn', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    harvestRegions(host('<span data-region="header">x</span>'), ['header', 'default', 'footer']);
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
   });
 });
 
@@ -89,5 +119,13 @@ describe('fillRegion', () => {
     outlet.textContent = 'old';
     fillRegion(outlet, 'new');
     expect(outlet.textContent).toBe('new');
+  });
+
+  it('clears a previously filled outlet', () => {
+    const outlet = document.createElement('span');
+    outlet.textContent = 'old';
+    fillRegion(outlet, '');
+    expect(outlet.textContent).toBe('');
+    expect(outlet.childNodes.length).toBe(0);
   });
 });
