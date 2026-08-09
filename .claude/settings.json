@@ -19,7 +19,15 @@
       "Bash(echo \"---typecheck exit: $?---\")",
       "Bash(echo \"---lint exit: $?---\")",
       "Bash(echo \"typecheck exit: $?\")",
-      "Bash(echo \"lint exit: $?\")"
+      "Bash(echo \"lint exit: $?\")",
+      "Bash(git -C c:/dev/JOSEAI4 status --porcelain=v1 -- src/lib/widgets/button-group/)",
+      "Bash(git -C c:/dev/JOSEAI4 log --oneline --all -- src/lib/widgets/button-group/)",
+      "Bash(git -C c:/dev/JOSEAI4 show --stat 9800ebc)",
+      "Bash(pnpm typecheck *)",
+      "Bash(echo \"typecheck exit:$?\")",
+      "Bash(pnpm lint *)",
+      "Bash(echo \"lint exit:$?\")",
+      "Bash(git status *)"
     ]
   },
   "model": "opusplan"
