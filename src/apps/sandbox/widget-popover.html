@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>widget-popover demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 24px;
+      }
+      section {
+        margin-bottom: 24px;
+      }
+      h2 {
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+      #row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        align-items: flex-start;
+      }
+      #row fieldset {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        border: 1px solid #ccd;
+        border-radius: 4px;
+        padding: 8px;
+      }
+      #row legend {
+        font-size: 11px;
+        color: #556;
+        padding: 0 4px;
+      }
+      #map {
+        position: relative;
+        width: 100%;
+        height: 320px;
+        background: repeating-linear-gradient(45deg, #dde, #dde 10px, #eef 10px, #eef 20px);
+        border: 1px solid #99a;
+        cursor: crosshair;
+      }
+      #map::before {
+        content: 'Click anywhere to open the feature popup at that point.';
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        font-size: 12px;
+        color: #445;
+      }
+
+      /* Static placement for the tool/info panels — no positionAt involved (§4). */
+      widget-popover.tools {
+        inset: 1rem 1rem auto auto;
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <h2>Trigger row — wired exactly as an app would: click → toggle(button)</h2>
+      <div id="row">
+        <fieldset>
+          <legend>group="tools"</legend>
+          <button type="button" id="btn-tools-a">Tool A</button>
+          <button type="button" id="btn-tools-b">Tool B</button>
+        </fieldset>
+        <fieldset>
+          <legend>group="info"</legend>
+          <button type="button" id="btn-info">Info</button>
+        </fieldset>
+        <fieldset>
+          <legend>no group</legend>
+          <button type="button" id="btn-ungrouped">Ungrouped</button>
+          <button type="button" id="btn-headerless">Headerless</button>
+          <button type="button" id="btn-timer">Timer body</button>
+          <button type="button" id="btn-typo">Typo demo</button>
+        </fieldset>
+      </div>
+    </section>
+
+    <section>
+      <h2>Feature popup — positioned by clicking the map stand-in</h2>
+      <div id="map"></div>
+    </section>
+
+    <!-- Two in "tools" — opening one closes the other. Statically placed via the .tools class. -->
+    <widget-popover id="popover-tools-a" class="tools" group="tools">
+      <span data-region="header">Tool A</span>
+      Tool A's panel content.
+    </widget-popover>
+
+    <widget-popover id="popover-tools-b" class="tools" group="tools">
+      <!-- Header holding a real widget, not just text (§7). -->
+      <ui-button data-region="header" icon="fa-solid fa-arrows-rotate" aria-label="Refresh"></ui-button>
+      Tool B's panel — its header carries a widget, not plain text.
+    </widget-popover>
+
+    <!-- A third popover, its own group: opening it must not disturb the "tools" pair. -->
+    <widget-popover id="popover-info" class="tools" group="info">
+      <span data-region="header">Info</span>
+      A different group — opening this leaves the "tools" pair alone.
+    </widget-popover>
+
+    <!-- No group attribute: never auto-closes and is never auto-closed by anything. -->
+    <widget-popover id="popover-ungrouped" class="tools">
+      <span data-region="header">Ungrouped</span>
+      No group — opening this closes nothing, and nothing closes it.
+    </widget-popover>
+
+    <!-- No header region content at all: the header strip still renders, holding only the close button (§5). -->
+    <widget-popover id="popover-headerless" class="tools">
+      This popover supplied no header content — the strip above still holds the close button.
+    </widget-popover>
+
+    <!-- Body updated on a timer once open, to watch the live region announce (§6: show() first, then setContent). -->
+    <widget-popover id="popover-timer" class="tools">
+      <span data-region="header">Timer</span>
+      <span data-region="default">Waiting…</span>
+    </widget-popover>
+
+    <!-- Deliberate data-region typo: "haeder" is never claimed, so the regions helper logs a dev error. -->
+    <widget-popover id="popover-typo" class="tools">
+      <span data-region="haeder">This will never appear as a header.</span>
+    </widget-popover>
+
+    <!-- Feature popup: no static class, placed entirely via positionAt from map clicks. -->
+    <widget-popover id="popover-feature">
+      <span data-region="header">Feature</span>
+      <span data-region="default"></span>
+    </widget-popover>
+
+    <script type="module" src="/src/widget-popover.ts"></script>
+  </body>
+</html>

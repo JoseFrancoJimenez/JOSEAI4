@@ -21,3 +21,5 @@ export type {
 } from './checkbox-tree/checkbox-tree.ts';
 export { ButtonGroupElement } from './button-group/button-group.ts';
 export type { ButtonGroupOrientation, ButtonGroupChangeDetail } from './button-group/button-group.ts';
+export { WidgetPopoverElement } from './popover/widget-popover.ts';
+export type { WidgetPopoverRegion } from './popover/widget-popover.ts';

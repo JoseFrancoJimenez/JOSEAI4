@@ -33,7 +33,7 @@ MVVM level 2 (`docs/plan.md` §2): view-state inlined in the element, no ViewMod
 
 **In:** `popover="manual"` on the host; `show(source?)` / `hide()` / `toggle(source?)`; group-based auto-close; focus restoration on close; `Escape`; a close button; `positionAt(x, y)`; three content regions forwarded to a `ui-card`; a persistent `aria-live` body wrapper.
 
-**Out — do not build, do not leave hooks for:** modal mode; a backdrop with light-dismiss; collision detection, edge flipping, or a pointer/arrow tail; drag-to-move; resize; animation or transition API; anchoring to an element (CSS anchor positioning); a `CustomEvent` of any kind; an `open` setter; a `destroy()`; nesting rules for popovers inside popovers; stacking order beyond what the top layer gives; RTL handling.
+**Out — do not build, do not leave hooks for:** modal mode; a backdrop with light-dismiss; edge flipping or a pointer/arrow tail; drag-to-move; resize; animation or transition API; anchoring to an element (CSS anchor positioning); a `CustomEvent` of any kind; an `open` setter; a `destroy()`; nesting rules for popovers inside popovers; stacking order beyond what the top layer gives; RTL handling. A plain viewport boundary clamp on `positionAt` is in scope (Task 6, §10) — narrower than "collision detection": it only pulls the box back from an edge it would overflow, it never flips which side of a point the box renders on and never reacts to other elements.
 
 **Height has two routes, and this widget uses the one that needs no card API.** `--widget-popover-max-height` caps the host; `ui-card`'s body then takes the slack and scrolls. The card also exposes `--ui-card-body-max-height` for consumers with no constrained host, which this widget does not need. See `docs/ui-card-plan-update.md`.
 
@@ -208,6 +208,8 @@ Skipping `this`, and only those currently open. **The DOM is the registry** — 
 - `positionAt` writes those two properties and nothing else.
 - Knobs with fallbacks, named after the tag: `--widget-popover-x`, `--widget-popover-y`, `--widget-popover-width`, `--widget-popover-max-height`. Frame appearance belongs to `ui-card`'s knobs, not duplicated here.
 - **`--widget-popover-max-height` caps the host, and the card does the rest.** The card's body takes the slack and scrolls, so a long feature record scrolls with nothing to configure here. Verified in the sandbox, not in a test — jsdom performs no layout (`docs/testing.md` §3).
+- **`margin: 0` on the host.** The UA popover stylesheet centers an unpositioned popover via `inset: 0; margin: auto;`. Overriding only `left`/`top` leaves the UA's `right`/`bottom: 0` in place, and with `margin: auto` still active the box centers *between* the given point and the viewport's far edge instead of anchoring at it. `margin: 0` forces the over-constrained case to resolve in favor of `left`/`top`. The unpositioned fallback moved from `auto` to `1rem` for the same reason — the UA's centering trick needs `margin: auto` to work at all, and that had to be defused.
+- **`show()` clamps a `positionAt`'d popover to the viewport (§10, resolved).** Boundary clamp only — never flips sides, never touches a popover placed by app CSS. Runs after `showPopover()`, since it needs real layout; unverifiable in jsdom, checked in the sandbox like the `max-height` cap above.
 - **`.widget-popover__close { margin-inline-start: auto; }`** pushes the close button to the trailing edge of the card's header. This widget styles a node it created, by its own class — not the card's internals (`docs/plan.md` §4).
 - `::backdrop` is available and left unstyled — under `manual` there is no light-dismiss, so a visible backdrop would promise a dismissal that does not exist.
 - Low specificity, no `!important`.
@@ -232,7 +234,7 @@ This is where the API gets judged. If something feels awkward here, fix the desi
 ## 10. Open questions
 
 - **Widget folder naming.** `docs/plan.md` §4 shows `widgets/datepicker/`; `ui-button` shipped as `elements/ui-button/`, the full tag. This plan assumes `widgets/popover/`. Settle it once, in `docs/plan.md`, before Task 2 — it is cheap now and a rename later.
-- **Whether `positionAt` should clamp to the viewport.** Deliberately out of scope, but the first user-visible bug will be a popup opened near the right edge running off-screen. Recognise it as a defined limitation now so it is a decision later, not a surprise.
+- ~~**Whether `positionAt` should clamp to the viewport.**~~ Resolved: the first user-visible bug (a feature popup opened near the right/bottom edge running off-screen) showed up during Task 7's manual pass, as predicted. `show()` now clamps — see Task 6.
 
 ## 11. Done
 
