@@ -1,0 +1,43 @@
+widget-button-group:not(:defined) {
+  visibility: hidden;
+}
+
+.widget-button-group {
+  display: flex;
+  flex-direction: row;
+  gap: var(--widget-button-group-gap, 0);
+
+  /* Flat, shared-border block: every child is square by default; only the outer edges round. */
+  > * {
+    --ui-button-radius: 0;
+  }
+
+  > :first-child {
+    --ui-button-radius: var(--widget-button-group-radius, 4px) 0 0 var(--widget-button-group-radius, 4px);
+  }
+
+  > :last-child {
+    --ui-button-radius: 0 var(--widget-button-group-radius, 4px) var(--widget-button-group-radius, 4px) 0;
+  }
+
+  /* A lone child is both first and last — round every corner instead of splitting the radius in two. */
+  > :only-child {
+    --ui-button-radius: var(--widget-button-group-radius, 4px);
+  }
+
+  &[orientation='vertical'] {
+    flex-direction: column;
+
+    > :first-child {
+      --ui-button-radius: var(--widget-button-group-radius, 4px) var(--widget-button-group-radius, 4px) 0 0;
+    }
+
+    > :last-child {
+      --ui-button-radius: 0 0 var(--widget-button-group-radius, 4px) var(--widget-button-group-radius, 4px);
+    }
+
+    > :only-child {
+      --ui-button-radius: var(--widget-button-group-radius, 4px);
+    }
+  }
+}

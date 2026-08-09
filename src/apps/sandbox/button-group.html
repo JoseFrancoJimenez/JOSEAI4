@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>widget-button-group demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 24px;
+      }
+      section {
+        margin-bottom: 24px;
+      }
+      h2 {
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+      #event-log {
+        font-family: monospace;
+        font-size: 12px;
+        background: #f4f4f4;
+        padding: 8px;
+        max-height: 160px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <h2>Horizontal — none selected initially, disabled button in the middle</h2>
+      <widget-button-group aria-label="Text alignment">
+        <ui-button icon="fa-solid fa-align-left" aria-label="Align left" value="left"></ui-button>
+        <ui-button icon="fa-solid fa-align-center" aria-label="Align center" value="center" disabled></ui-button>
+        <ui-button icon="fa-solid fa-align-right" aria-label="Align right" value="right"></ui-button>
+      </widget-button-group>
+    </section>
+
+    <section>
+      <h2>Vertical</h2>
+      <widget-button-group aria-label="View mode" orientation="vertical">
+        <ui-button icon="fa-solid fa-list" aria-label="List view" value="list"></ui-button>
+        <ui-button icon="fa-solid fa-table-cells" aria-label="Grid view" value="grid"></ui-button>
+        <ui-button icon="fa-solid fa-map" aria-label="Map view" value="map"></ui-button>
+      </widget-button-group>
+    </section>
+
+    <section>
+      <h2>Programmatic setActive (reflects, does not emit)</h2>
+      <widget-button-group id="programmatic-demo" aria-label="Priority">
+        <ui-button label="Low" value="low"></ui-button>
+        <ui-button label="Medium" value="medium"></ui-button>
+        <ui-button label="High" value="high"></ui-button>
+      </widget-button-group>
+      <p>
+        <button type="button" id="set-medium">setActive('medium')</button>
+        <button type="button" id="set-null">setActive(null)</button>
+      </p>
+    </section>
+
+    <section>
+      <h2>A UiButtonElement subclass participates fully</h2>
+      <widget-button-group aria-label="Rating">
+        <ui-button label="OK" value="ok"></ui-button>
+        <fancy-button label="Great" value="great"></fancy-button>
+      </widget-button-group>
+    </section>
+
+    <section>
+      <h2>Event log — change event vs. native click (two events per gesture)</h2>
+      <widget-button-group id="logging-demo" aria-label="Logged group">
+        <ui-button label="A" value="a"></ui-button>
+        <ui-button label="B" value="b"></ui-button>
+      </widget-button-group>
+      <pre id="event-log"></pre>
+    </section>
+
+    <script type="module" src="/src/button-group.ts"></script>
+  </body>
+</html>
