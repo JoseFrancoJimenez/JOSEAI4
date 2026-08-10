@@ -23,3 +23,11 @@ export { ButtonGroupElement } from './button-group/button-group.ts';
 export type { ButtonGroupOrientation, ButtonGroupChangeDetail } from './button-group/button-group.ts';
 export { WidgetPopoverElement } from './popover/widget-popover.ts';
 export type { WidgetPopoverRegion } from './popover/widget-popover.ts';
+export { NestedListElement } from './nested-list/nested-list.ts';
+export type {
+  NestedListLeaf,
+  NestedListGroup,
+  NestedListItem,
+  NestedListSetup,
+  NestedListToggleDetail,
+} from './nested-list/nested-list.ts';

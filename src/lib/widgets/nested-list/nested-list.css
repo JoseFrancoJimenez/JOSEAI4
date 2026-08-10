@@ -1,0 +1,61 @@
+/* AWESOME AI */
+
+widget-nested-list:not(:defined) {
+  visibility: hidden;
+}
+
+.widget-nested-list {
+  display: block;
+}
+
+.widget-nested-list__children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  /* Every level (root and nested alike) carries the same indent; nested <ul>s compound it
+     through ordinary box nesting, so depth reads visually without any per-level bookkeeping. */
+  padding-inline-start: var(--widget-nested-list-indent, 2em);
+}
+
+.widget-nested-list__leaf {
+  display: flex;
+  align-items: center;
+}
+
+.widget-nested-list__header {
+  display: flex;
+  align-items: center;
+}
+
+.widget-nested-list__disclosure {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--ui-focus-ring, #5b8af5);
+    outline-offset: 2px;
+  }
+}
+
+.widget-nested-list__twisty {
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.1s ease;
+}
+
+.widget-nested-list__disclosure[aria-expanded='true'] .widget-nested-list__twisty {
+  transform: rotate(45deg);
+}
+
+.widget-nested-list__extras:empty {
+  display: none;
+}

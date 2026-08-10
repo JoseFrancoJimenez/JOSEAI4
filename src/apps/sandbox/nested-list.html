@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>widget-nested-list demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 24px;
+        max-width: 480px;
+      }
+      section {
+        margin-bottom: 24px;
+      }
+      h2 {
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+      #actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      #event-log {
+        font-family: monospace;
+        font-size: 12px;
+        background: #f4f4f4;
+        padding: 8px;
+        max-height: 160px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+      .layer-extras {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-inline-start: 8px;
+      }
+      .layer-extras input[type='range'] {
+        width: 70px;
+      }
+      widget-nested-list {
+        border: 1px solid #ccd;
+        border-radius: 4px;
+        padding: 8px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <h2 id="layers-heading">GIS layer panel — groups of layers with visibility/opacity extras</h2>
+      <div id="actions">
+        <button type="button" id="reorder">setItems: reorder + toggle a layer's visibility</button>
+        <button type="button" id="expand-utilities">expand('utilities')</button>
+        <button type="button" id="collapse-utilities">collapse('utilities')</button>
+      </div>
+      <!--
+        No aria-label/aria-labelledby here: the widget declares no container role (Disclosure
+        list, not a composite widget — docs/tasks/nestedList/widget-nested-list-plan.md §1), so
+        there is no grouping semantic for a name to attach to. The preceding heading is how a
+        screen-reader user identifies this list, exactly as it would for a plain <ul>.
+      -->
+      <widget-nested-list id="layers"></widget-nested-list>
+    </section>
+
+    <section>
+      <h2>widget-nested-list:toggle event log</h2>
+      <pre id="event-log"></pre>
+    </section>
+
+    <script type="module" src="/src/nested-list.ts"></script>
+  </body>
+</html>
