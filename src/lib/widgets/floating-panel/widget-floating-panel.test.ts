@@ -239,7 +239,7 @@ describe('widget-floating-panel open state (§4)', () => {
 // specific to this widget or its former stub. Stays a manual/sandbox check.
 
 describe('widget-floating-panel focus restoration (Task 4)', () => {
-  it('show() moves focus to the panel itself', () => {
+  it('show() moves focus to the first focusable element', () => {
     const el = mountWidget();
     const outside = document.createElement('button');
     document.body.append(outside);
@@ -247,7 +247,7 @@ describe('widget-floating-panel focus restoration (Task 4)', () => {
 
     el.show();
 
-    expect(document.activeElement).toBe(el);
+    expect(document.activeElement).toBe(closeButtonNative(el));
   });
 
   it('with focus inside, hide() returns focus to source', () => {
@@ -337,6 +337,81 @@ describe('widget-floating-panel Escape (Task 4)', () => {
     closeButtonNative(el).dispatchEvent(other);
 
     expect(other.defaultPrevented).toBe(false);
+  });
+});
+
+describe('widget-floating-panel focus target on open (§8)', () => {
+  it('show() moves focus to header content before the close button, when header content is focusable', () => {
+    const el = mountWidget('<widget-floating-panel><button data-region="header">Pin</button></widget-floating-panel>');
+
+    el.show();
+
+    expect(document.activeElement).toBe(header(el).querySelector('button[data-region="header"]'));
+  });
+});
+
+describe('widget-floating-panel Tab trap (§8)', () => {
+  it('Tab from the last focusable element returns focus to source', () => {
+    const el = mountWidget();
+    const source = document.createElement('button');
+    document.body.append(source);
+
+    el.show(source);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    closeButtonNative(el).dispatchEvent(tab);
+
+    expect(document.activeElement).toBe(source);
+    expect(tab.defaultPrevented).toBe(true);
+  });
+
+  it('Shift+Tab from the first focusable element returns focus to source', () => {
+    const el = mountWidget();
+    const source = document.createElement('button');
+    document.body.append(source);
+
+    el.show(source);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    closeButtonNative(el).dispatchEvent(tab);
+
+    expect(document.activeElement).toBe(source);
+    expect(tab.defaultPrevented).toBe(true);
+  });
+
+  it('Tab from a focusable element that is not the last is left alone', () => {
+    const el = mountWidget('<widget-floating-panel><button data-region="header">Pin</button></widget-floating-panel>');
+    const source = document.createElement('button');
+    document.body.append(source);
+
+    el.show(source);
+    const headerButton = header(el).querySelector('button[data-region="header"]') as HTMLButtonElement;
+    expect(document.activeElement).toBe(headerButton);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    headerButton.dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(false);
+  });
+
+  it('with no source, Tab from the last focusable element is left alone', () => {
+    const el = mountWidget();
+    el.show();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+
+    closeButtonNative(el).dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(false);
+  });
+
+  it('with a source no longer connected, Tab is left alone', () => {
+    const el = mountWidget();
+    const source = document.createElement('button');
+    document.body.append(source);
+
+    el.show(source);
+    source.remove();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    closeButtonNative(el).dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(false);
   });
 });
 
@@ -476,7 +551,7 @@ describe('widget-floating-panel groups — attribute changes and focus (Task 5)'
 
     expect(a.open).toBe(false);
     expect(document.activeElement).not.toBe(sourceA);
-    expect(document.activeElement).toBe(b);
+    expect(document.activeElement).toBe(closeButtonNative(b));
   });
 });
 

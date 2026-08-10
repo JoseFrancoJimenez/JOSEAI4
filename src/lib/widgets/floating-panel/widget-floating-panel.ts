@@ -1,14 +1,14 @@
 // AWESOME AI
 
 // APG pattern: none, deliberately. This is a container of content, not a widget with composite
-// interaction — it has no keyboard model of its own beyond Escape, and its contents keep their
-// own focus models (docs/accessibility.md §3.2). role="region" was considered and rejected: it
-// would demand an accessible name the consumer may not have (docs/accessibility.md §4), and a
-// landmark for a transient tool panel is noise. No ARIA is better than wrong ARIA
-// (docs/accessibility.md §1; docs/tasks/popover/widget-floating-panel-plan.md §9).
+// interaction — it has no keyboard model of its own beyond Escape and the Tab boundary trap
+// (§8), and its contents keep their own focus models (docs/accessibility.md §3.2). role="region"
+// was considered and rejected: it would demand an accessible name the consumer may not have
+// (docs/accessibility.md §4), and a landmark for a transient tool panel is noise. No ARIA is
+// better than wrong ARIA (docs/accessibility.md §1; docs/tasks/popover/widget-floating-panel-plan.md §9).
 
 import './widget-floating-panel.css';
-import { cls, regionNames } from './widget-floating-panel-dom.ts';
+import { cls, focusableSelector, regionNames } from './widget-floating-panel-dom.ts';
 import { fillRegion, harvestRegions } from '../../core/regions.ts';
 import type { HarvestedRegions, RegionContent } from '../../core/regions.ts';
 import { UiCardElement } from '../../elements/ui-card/ui-card.ts';
@@ -83,10 +83,6 @@ class WidgetFloatingPanelElement extends HTMLElement {
 
   connectedCallback(): void {
     this.classList.add(cls.host);
-    // Programmatic focus target only — `-1` keeps it out of sequential Tab order, so this adds no
-    // extra Tab stop. Opening moves focus here (attributeChangedCallback below) so keyboard users
-    // land on the panel immediately and Tab into its content, close button included, from there.
-    this.setAttribute('tabindex', '-1');
     for (const prop of UPGRADE_PROPS) this.#upgradeProperty(prop);
     if (!this.#controller) {
       this.#controller = new AbortController();
@@ -120,10 +116,10 @@ class WidgetFloatingPanelElement extends HTMLElement {
     if (!this.#rendered || !this.open) return;
     this.#warnIfNoPositionedAncestor();
     this.#closeGroupSiblings();
-    this.focus();
+    this.#focusableElements()[0]?.focus();
   }
 
-  /** Opening moves focus to the panel itself (`attributeChangedCallback`); `source` is captured only to know where to return it on close. */
+  /** Opening moves focus to its first focusable element (`attributeChangedCallback`); `source` is captured only to know where to return it on close. */
   show(source?: HTMLElement): void {
     if (this.open) return;
     this.#source = source;
@@ -202,11 +198,35 @@ class WidgetFloatingPanelElement extends HTMLElement {
 
   /** Listening on the host, not `document`, is the whole implementation of "only when focus is inside" (§8). */
   #onKeydown = (ev: KeyboardEvent): void => {
-    if (ev.key !== 'Escape') return;
-    ev.preventDefault();
-    this.hide();
-    this.#emitToggle();
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      this.hide();
+      this.#emitToggle();
+      return;
+    }
+    if (ev.key === 'Tab') this.#onTab(ev);
   };
+
+  /**
+   * Tabbing out of the panel's content, either direction, returns focus to `source` rather than
+   * continuing wherever the panel's DOM position happens to sit next — a rail or map-click panel
+   * is reparented into the map container (app-level), so its DOM neighbours carry no logical
+   * relationship to whatever opened it (§8). With no connected `source` — a popup opened by a map
+   * click, most commonly — Tab is left alone: there is nowhere sensible to send focus back to.
+   */
+  #onTab(ev: KeyboardEvent): void {
+    if (!this.#source?.isConnected) return;
+    const focusables = this.#focusableElements();
+    const edge = ev.shiftKey ? focusables[0] : focusables[focusables.length - 1];
+    if (document.activeElement !== edge) return;
+    ev.preventDefault();
+    this.#source.focus();
+  }
+
+  /** Focusable descendants in document order, which matches tab order (§5: header, then body, then footer). */
+  #focusableElements(): HTMLElement[] {
+    return Array.from(this.querySelectorAll<HTMLElement>(focusableSelector));
+  }
 
   /**
    * Input provisioning, not a command (skill §5): exempt from any readiness check, never throws.

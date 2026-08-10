@@ -31,7 +31,7 @@ MVVM level 2 (`docs/plan.md` §2): view-state inlined in the element, no ViewMod
 
 ## 3. Scope
 
-**In:** `open` as a reflecting attribute; `show(source?)` / `hide()` / `toggle(source?)`; group-based auto-close; focus moves onto the panel itself when it opens and restores to `source` on close, but only if the panel still held focus at that moment; `Escape`; a close button; `positionAt(x, y)` relative to the offset parent; three content regions forwarded to a `ui-card`; a persistent `aria-live` body wrapper; a `widget-floating-panel:toggle` event on user-driven close; a dev-only warning when the host has no positioned ancestor; a `--widget-floating-panel-z-index` knob.
+**In:** `open` as a reflecting attribute; `show(source?)` / `hide()` / `toggle(source?)`; group-based auto-close; focus moves to the panel's first focusable element when it opens, is trapped at both ends of its own content back to `source`, and restores to `source` on close, but only if the panel still held focus at that moment; `Escape`; a close button; `positionAt(x, y)` relative to the offset parent; three content regions forwarded to a `ui-card`; a persistent `aria-live` body wrapper; a `widget-floating-panel:toggle` event on user-driven close; a dev-only warning when the host has no positioned ancestor; a `--widget-floating-panel-z-index` knob.
 
 **Out — do not build, do not leave hooks for:** modal mode; a backdrop with light-dismiss; edge flipping or a pointer/arrow tail; drag-to-move; resize; animation or transition API; anchoring to an element via CSS anchor positioning (evaluated and rejected — `docs/rationale.md`); nesting rules for panels inside panels; stacking order beyond what the z-index knob gives; RTL handling; clamping `positionAt` to stay inside its container. That last one is deliberately the consumer's job, not ours — see §14.
 
@@ -85,7 +85,7 @@ That is the whole skeleton. Everything else is built as nodes and handed to the 
 - **Body** — a persistent `<div class="widget-floating-panel__live" aria-live="polite">`, passed to `card.setContent('default', …)` **exactly once**. Consumer body content is written *inside* it (§6).
 - **Footer** — passed straight through.
 
-`classList.add(cls.host)` and `tabindex="-1"` are set on the host in `connectedCallback`, before harvest. `tabindex="-1"` makes the host a **programmatic** focus target only — it adds no extra Tab stop, since `-1` is excluded from sequential navigation (§8).
+`classList.add(cls.host)` is set on the host in `connectedCallback`, before harvest. The host itself carries no `tabindex`: it is never a focus target — the close button guarantees at least one focusable descendant, so opening always has somewhere real to send focus (§8).
 
 **The close button is inside the header, not floating over the card.** The alternative — an absolutely positioned sibling of the card — was considered: simpler, but it overlays content, needs padding coordination, and lands last in reading and tab order. Inside the header it reads and tabs where a close control belongs. The consequence to accept: a panel with no header content still renders a header strip holding just the close button, because the close button is always header content and `ui-card` hides only genuinely empty sections.
 
@@ -113,22 +113,24 @@ That is the whole skeleton. Everything else is built as nodes and handed to the 
 
 ## 8. Focus, Escape, groups
 
-- **Opening moves focus onto the panel itself.** The host carries `tabindex="-1"` (§5) so it is a valid, script-only focus target; `attributeChangedCallback`'s open path calls `this.focus()` after the dev guard and group-sibling close. Keyboard users land on the panel immediately and Tab into its content, close button included, from there.
+- **Opening moves focus to the panel's first focusable descendant.** `attributeChangedCallback`'s open path calls `this.#focusableElements()[0]?.focus()` after the dev guard and group-sibling close. `#focusableElements()` queries `focusableSelector` (`widget-floating-panel-dom.ts`) in document order, which follows the card's own header → body → footer layout (§5), so "first" matches visual and tab order. The close button is always header content (§5), so this is never empty in practice — there is always at least one real target.
+- **Tab is trapped at both ends of the panel's own content, back to `source`.** A `keydown` listener on the host (same listener as `Escape`) checks, on `Tab`: with `source` connected, if the currently focused element is the *last* focusable descendant (`Tab`) or the *first* (`Shift+Tab`), `preventDefault()` and focus moves to `source` instead of continuing wherever the panel's DOM position happens to sit next. This matters because a rail or map-click panel is reparented into the map container (app-level), so its DOM neighbours carry no logical relationship to whatever opened it — without the trap, tabbing out would land on an arbitrary sibling panel or map control. **With no connected `source`** — a popup opened by a map click, most commonly (§4) — Tab is left alone entirely: there is nowhere sensible to send focus back to, so the browser's native tab order takes over.
 - **Closing restores focus only if the panel held it.** Capture `this.contains(document.activeElement)` *before* `open` is cleared (closing takes the content out of the accessibility tree, per `docs/accessibility.md` §7), then restore synchronously in the same call. `Node.contains()` is true for the node itself, so the panel having focus via the point above is recognised correctly. `#source` optional: if present and still connected, it gets focus back; otherwise the previously focused element is blurred explicitly, so nothing is left stranded inside now-hidden content. If the panel did **not** hold focus when it closed — most commonly because something else (the button that triggered a group-sibling switch, a resize handler, any other app code) already moved focus elsewhere — nothing is touched. This is what makes group auto-close correct for free: when a sibling closes because this panel opened, focus has already moved to whichever control the user just activated, so the guard is false and no parasitic restoration happens.
-- **`Escape`:** a `keydown` listener **on the host**, `preventDefault()` on that key only — every other key stays available to the page and to any widget inside (`docs/accessibility.md` §2). Listening on the host rather than `document` is the whole implementation of "only when focus is inside."
+- **`Escape`:** the same host `keydown` listener, `preventDefault()` on that key only — every other key stays available to the page and to any widget inside (`docs/accessibility.md` §2). Listening on the host rather than `document` is the whole implementation of "only when focus is inside."
 - **Groups:** on the open path, close every other panel sharing the `group` attribute. **The DOM is the registry** — `document.querySelectorAll('.widget-floating-panel[group="…"]')` — no module-level map, nothing to register, unregister, or leak, no stale entries pointing at destroyed elements (`CLAUDE.md` keeps mutable global state out of `src/lib`). Selecting by the host class rather than the tag keeps it working under inheritance (skill §10). The group-sibling *decision* — which of a set of candidates should close — is extracted as a small pure function (`siblingsToClose`, exported), asserted with no DOM at all; only the candidate *selection* touches `document.querySelectorAll`.
 
 ## 9. Accessibility
 
-**No role.** This is a container of content, not a widget with composite interaction — it has no keyboard model of its own beyond `Escape`, and its contents keep their own focus models (`docs/accessibility.md` §3.2). `role="region"` was considered and rejected: it would demand an accessible name the consumer may not have (`docs/accessibility.md` §4), and a landmark for a transient tool panel is noise. No ARIA is better than wrong ARIA (`docs/accessibility.md` §1).
+**No role.** This is a container of content, not a widget with composite interaction — it has no keyboard model of its own beyond `Escape` and the Tab boundary trap (§8), and its contents keep their own focus models (`docs/accessibility.md` §3.2). `role="region"` was considered and rejected: it would demand an accessible name the consumer may not have (`docs/accessibility.md` §4), and a landmark for a transient tool panel is noise. No ARIA is better than wrong ARIA (`docs/accessibility.md` §1).
 
 - **No `aria-modal`.** Nothing here blocks the page; the map keeps panning and the trigger row keeps taking clicks while a panel is open.
-- **`tabindex="-1"` on the host** (§5, §8) — a deliberate, narrow exception to "no tabindex on the host": it is a programmatic focus target, not a Tab stop, and exists purely to give opening somewhere to move focus to.
-- **Opening moves focus to the panel** (§8) rather than into its content or leaving focus untouched. This is a departure from the platform's usual non-modal guidance (a notification or a persistent panel does not normally take focus even when it contains focusable elements) — the tradeoff accepted here is that keyboard and screen-reader users are told the panel arrived, at the cost of moving focus away from wherever it was, on every open. Content inside the panel is reached by Tabbing from there, same as any other part of the page.
+- **No `tabindex` on the host.** Unlike a genuinely empty container, this one always has a real focus target: the close button is always header content (§5), so `#focusableElements()[0]` never comes up empty and the host itself never needs to stand in.
+- **Opening moves focus into the panel** (§8) rather than leaving it untouched. This is a departure from the platform's usual non-modal guidance (a notification or a persistent panel does not normally take focus even when it contains focusable elements) — the tradeoff accepted here is that keyboard and screen-reader users are told the panel arrived, at the cost of moving focus away from wherever it was, on every open.
+- **Tab is trapped at both ends of the panel's content, back to `source`** (§8) — a departure from the usual "non-modal means no trap" guidance, accepted for the same reason as the previous point: this widget's DOM position (reparented into the map container) carries no relationship to where it visually opens from, so letting Tab escape into natural DOM order would land focus somewhere arbitrary. With no `source`, the trap is inert and Tab behaves natively.
 - **Closing restores focus only if the panel held it** (§8) — restoring unconditionally would yank a user who has already moved on somewhere else back to the trigger.
 - **The close button is icon-only**, so it carries an `aria-label` from `close-label`. `ui-button` already errors in dev when an icon-only button has no accessible name; this widget must not be the reason that fires.
 - **The `aria-live` wrapper is `polite`**, never `assertive`. Feature information is not an alert.
-- **Everything inside a panel keeps its own focus model** (`docs/accessibility.md` §3.2). The panel is layout, not coordination: it has no composite keyboard model of its own beyond `Escape`, so there is nothing to nest.
+- **Everything inside a panel keeps its own focus model** (`docs/accessibility.md` §3.2). The panel is layout, not coordination: it has no composite keyboard model of its own beyond `Escape` and the Tab boundary trap, so there is nothing to nest.
 
 ## 10. Files
 
@@ -136,7 +138,7 @@ That is the whole skeleton. Everything else is built as nodes and handed to the 
 src/lib/widgets/floating-panel/
   widget-floating-panel.ts
   widget-floating-panel.css
-  widget-floating-panel-dom.ts   # cls map + regionNames
+  widget-floating-panel-dom.ts   # cls map, regionNames, focusableSelector
   widget-floating-panel.test.ts
   index.ts                       # WidgetFloatingPanelElement + WidgetFloatingPanelRegion
 src/apps/sandbox/
@@ -159,7 +161,8 @@ Every file starts with `// AWESOME AI` (skill §14).
 - `positionAt` writes the custom properties; calling it again replaces them; no assertion on computed layout — jsdom performs no layout, so placement itself is verified in the sandbox (§13).
 - The no-positioned-ancestor dev error fires on first open when there is no positioned ancestor; it does not fire when one exists.
 - A user gesture (close button, `Escape`) emits `widget-floating-panel:toggle` once with `detail: { open }`; `show()` / `hide()` / `toggle()` never emit.
-- `show()` moves focus to the panel itself; with focus inside, `hide()` returns focus to `source`; with focus outside, `hide()` leaves focus where it is; with no `source`, or a `source` no longer connected, closing does not throw and blurs the previously focused element instead of stranding it.
+- `show()` moves focus to the first focusable element, header content before the close button when header content is focusable; with focus inside, `hide()` returns focus to `source`; with focus outside, `hide()` leaves focus where it is; with no `source`, or a `source` no longer connected, closing does not throw and blurs the previously focused element instead of stranding it.
+- `Tab` from the last focusable element, and `Shift+Tab` from the first, return focus to `source` and `preventDefault()`; `Tab` from a focusable element in between is left alone; with no `source`, or a `source` no longer connected, `Tab` is left alone even at the edges.
 - `Escape` from inside closes and restores focus; `Escape` dispatched outside the panel does nothing; a key the widget does not handle is not `preventDefault`ed.
 - Opening a panel closes an open sibling in the same group; leaves other groups and ungrouped panels alone; changing `group` between opens takes effect immediately; closing a sibling this way does not steal focus back to its own source.
 - `siblingsToClose` (the group-sibling decision) is asserted directly, with no DOM.
@@ -176,7 +179,7 @@ Verify by hand:
 - Resizing the container keeps a CSS-placed panel correctly placed, with no JavaScript involved.
 - `overflow: hidden` on the container clips the panel; `visible` does not.
 - The panel sits above the map engine's controls and below app-level chrome.
-- Tab into an open panel — focus should already be on the panel itself immediately after it opens, before any Tab press. Continue Tab through its content, close button included.
+- Focus should already be on the panel's first focusable element immediately after it opens, before any Tab press. Continue Tab through its content, close button included; Tab from the last focusable element (or Shift+Tab from the first) should jump straight back to the trigger button, not wander into whatever else sits after the panel in the DOM.
 - `Escape` from inside closes it and returns focus to its trigger button; `Escape` with focus outside does nothing; clicking the background never closes anything.
 - Opening a group sibling does not disturb focus on the button that triggered it.
 - A screen reader announces the close button's name and the live region's content, updated *after* the panel opens (§6).

@@ -11,4 +11,14 @@ const cls = {
 /** `default` must be declared: unmarked children and bare text land there (`docs/regions.md` §3). */
 const regionNames = ['header', 'default', 'footer'] as const;
 
-export { cls, regionNames };
+/** Elements the focus trap treats as Tab stops — a native focusability check, not a role check. */
+const focusableSelector = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+export { cls, regionNames, focusableSelector };
