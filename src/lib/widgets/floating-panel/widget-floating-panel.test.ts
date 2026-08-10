@@ -351,7 +351,22 @@ describe('widget-floating-panel focus target on open (§8)', () => {
 });
 
 describe('widget-floating-panel Tab trap (§8)', () => {
-  it('Tab from the last focusable element returns focus to source', () => {
+  it('Tab from the last focusable element goes to the element after source, not back to source', () => {
+    const el = mountWidget();
+    const source = document.createElement('button');
+    document.body.append(source);
+    const after = document.createElement('button');
+    document.body.append(after);
+
+    el.show(source);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    closeButtonNative(el).dispatchEvent(tab);
+
+    expect(document.activeElement).toBe(after);
+    expect(tab.defaultPrevented).toBe(true);
+  });
+
+  it('with nothing after source, Tab from the last focusable element is left alone', () => {
     const el = mountWidget();
     const source = document.createElement('button');
     document.body.append(source);
@@ -360,8 +375,8 @@ describe('widget-floating-panel Tab trap (§8)', () => {
     const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
     closeButtonNative(el).dispatchEvent(tab);
 
-    expect(document.activeElement).toBe(source);
-    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(closeButtonNative(el));
+    expect(tab.defaultPrevented).toBe(false);
   });
 
   it('Shift+Tab from the first focusable element returns focus to source', () => {
@@ -377,6 +392,9 @@ describe('widget-floating-panel Tab trap (§8)', () => {
     expect(tab.defaultPrevented).toBe(true);
   });
 
+});
+
+describe('widget-floating-panel Tab trap edge cases (§8)', () => {
   it('Tab from a focusable element that is not the last is left alone', () => {
     const el = mountWidget('<widget-floating-panel><button data-region="header">Pin</button></widget-floating-panel>');
     const source = document.createElement('button');
@@ -410,6 +428,62 @@ describe('widget-floating-panel Tab trap (§8)', () => {
     source.remove();
     const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
     closeButtonNative(el).dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(false);
+  });
+});
+
+describe('widget-floating-panel Tab re-entry from source (§8)', () => {
+  it('Tab on source, while open, re-enters the panel at its first focusable element', () => {
+    const el = mountWidget();
+    const source = document.createElement('button');
+    document.body.append(source);
+
+    el.show(source);
+    source.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    source.dispatchEvent(tab);
+
+    expect(document.activeElement).toBe(closeButtonNative(el));
+    expect(tab.defaultPrevented).toBe(true);
+  });
+
+  it('Shift+Tab on source is left alone', () => {
+    const el = mountWidget();
+    const source = document.createElement('button');
+    document.body.append(source);
+
+    el.show(source);
+    source.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    source.dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(false);
+  });
+
+  it('after hide(), Tab on source no longer re-enters', () => {
+    const el = mountWidget();
+    const source = document.createElement('button');
+    document.body.append(source);
+
+    el.show(source);
+    el.hide();
+    source.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    source.dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(false);
+  });
+
+  it('with source already disconnected at show() time, Tab on it does not re-enter', () => {
+    const el = mountWidget();
+    const source = document.createElement('button');
+    document.body.append(source);
+    source.remove();
+
+    el.show(source);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    source.dispatchEvent(tab);
 
     expect(tab.defaultPrevented).toBe(false);
   });

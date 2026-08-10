@@ -24,19 +24,6 @@
         margin: 0 0 12px;
       }
 
-      #sidebar {
-        width: 280px;
-        flex: none;
-        display: flex;
-        flex-direction: column;
-      }
-
-      #layers-card {
-        flex: 1;
-        min-height: 0;
-        --ui-card-body-max-height: none;
-      }
-
       #main {
         flex: 1;
         min-width: 0;
@@ -133,15 +120,6 @@
     </style>
   </head>
   <body>
-    <aside id="sidebar">
-      <h1>Layers</h1>
-      <ui-card id="layers-card">
-        <widget-nested-list data-region="default" id="layers-list"></widget-nested-list>
-        <ui-button data-region="footer" label="Reset" icon="fa-solid fa-rotate-left"></ui-button>
-        <ui-button data-region="footer" label="Refresh" icon="fa-solid fa-rotate"></ui-button>
-      </ui-card>
-    </aside>
-
     <main id="main">
       <div id="toolbar">
         <h1>Map</h1>
@@ -177,7 +155,9 @@
         <!-- Left-corner panels: opened from left-tools, one at a time (shared "group" auto-closes siblings). -->
         <widget-floating-panel id="popover-left-1" group="left-tools" data-value="left-1">
           <span data-region="header">Layers</span>
-          Layers panel content.
+          <widget-nested-list data-region="default" id="layers-list"></widget-nested-list>
+          <ui-button data-region="footer" label="Reset" icon="fa-solid fa-rotate-left"></ui-button>
+          <ui-button data-region="footer" label="Refresh" icon="fa-solid fa-rotate"></ui-button>
         </widget-floating-panel>
         <widget-floating-panel id="popover-left-2" group="left-tools" data-value="left-2">
           <span data-region="header">Filter</span>

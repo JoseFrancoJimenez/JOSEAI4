@@ -69,6 +69,7 @@ class WidgetFloatingPanelElement extends HTMLElement {
   #liveEl!: HTMLDivElement;
 
   #controller: AbortController | undefined;
+  #sourceController: AbortController | undefined;
   #source: HTMLElement | undefined;
   #positionAncestorChecked = false;
 
@@ -102,6 +103,8 @@ class WidgetFloatingPanelElement extends HTMLElement {
       if (this.isConnected) return;
       this.#controller?.abort();
       this.#controller = undefined;
+      this.#sourceController?.abort();
+      this.#sourceController = undefined;
     });
   }
 
@@ -119,11 +122,17 @@ class WidgetFloatingPanelElement extends HTMLElement {
     this.#focusableElements()[0]?.focus();
   }
 
-  /** Opening moves focus to its first focusable element (`attributeChangedCallback`); `source` is captured only to know where to return it on close. */
+  /**
+   * Opening moves focus to its first focusable element (`attributeChangedCallback`); `source` is
+   * captured to know where to return focus on close, anchors the asymmetric Tab boundary while
+   * open (§8: `#onTab`), and gets its own listener so tabbing forward from it re-enters the panel
+   * (§8: `#armSourceReentry`).
+   */
   show(source?: HTMLElement): void {
     if (this.open) return;
     this.#source = source;
     this.open = true;
+    this.#armSourceReentry();
   }
 
   /**
@@ -139,6 +148,8 @@ class WidgetFloatingPanelElement extends HTMLElement {
     const activeElement = document.activeElement as HTMLElement | null;
     const hadFocus = activeElement !== null && this.contains(activeElement);
     this.open = false;
+    this.#sourceController?.abort();
+    this.#sourceController = undefined;
     if (!hadFocus) return;
     if (this.#source?.isConnected) this.#source.focus();
     else activeElement?.blur();
@@ -208,20 +219,77 @@ class WidgetFloatingPanelElement extends HTMLElement {
   };
 
   /**
-   * Tabbing out of the panel's content, either direction, returns focus to `source` rather than
-   * continuing wherever the panel's DOM position happens to sit next — a rail or map-click panel
-   * is reparented into the map container (app-level), so its DOM neighbours carry no logical
-   * relationship to whatever opened it (§8). With no connected `source` — a popup opened by a map
-   * click, most commonly — Tab is left alone: there is nowhere sensible to send focus back to.
+   * The two boundaries are deliberately asymmetric (§8), each mirroring what tabbing to `source`
+   * felt like on the way in: `Shift+Tab` from the first focusable element goes back to `source`
+   * itself — "the element that had focus before the panel opened," and `#armSourceReentry` makes
+   * that trip reversible, so a plain `Tab` from `source` re-enters the panel. Plain `Tab` from the
+   * *last* focusable element does not also bounce back to `source` — pairing "exit goes to source"
+   * with "source re-enters" in both directions is exactly the two-element loop (`source` ⇄ panel)
+   * that could never be escaped by continuing to tab forward. So forward-exit instead continues to
+   * whatever would naturally follow `source` in the page, skipping over the panel itself since it
+   * is reparented elsewhere (app-level) and carries no logical relationship to `source`'s own
+   * neighbours — that is the one direction that actually leaves the source/panel neighbourhood.
+   * With no connected `source` — a popup opened by a map click, most commonly — both directions
+   * are left alone: there is nowhere sensible to go.
    */
   #onTab(ev: KeyboardEvent): void {
     if (!this.#source?.isConnected) return;
     const focusables = this.#focusableElements();
-    const edge = ev.shiftKey ? focusables[0] : focusables[focusables.length - 1];
-    if (document.activeElement !== edge) return;
+
+    if (ev.shiftKey) {
+      if (document.activeElement !== focusables[0]) return;
+      ev.preventDefault();
+      this.#source.focus();
+      return;
+    }
+
+    if (document.activeElement !== focusables[focusables.length - 1]) return;
+    const next = this.#focusableAfterSource();
+    if (!next) return;
     ev.preventDefault();
-    this.#source.focus();
+    next.focus();
   }
+
+  /**
+   * The focusable element immediately after `source` in document order — treated as tab order,
+   * the same assumption `#focusableElements` makes, valid because nothing in this app uses a
+   * positive `tabindex`. Excludes this panel's own descendants (so forward-exit can never loop
+   * back in) and `source` itself along with its own descendants (a custom element like `ui-button`
+   * is not itself a match for `focusableSelector` — only its inner native control is — so without
+   * this exclusion that inner control would register as "after" its own host).
+   */
+  #focusableAfterSource(): HTMLElement | undefined {
+    const source = this.#source;
+    if (!source) return undefined;
+    const candidates = Array.from(document.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+      (el) => !this.contains(el) && el !== source && !source.contains(el),
+    );
+    return candidates.find((el) => (source.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0);
+  }
+
+  /**
+   * Arms the listener that makes tabbing forward from `source` re-enter the panel (§8). Scoped to
+   * its own controller (not `#controller`, which lives for the widget's whole connected lifetime)
+   * because it must be re-armed per `source` on every `show()` and torn down on `hide()` — a
+   * closed panel has nothing to re-enter, and leaving it armed would intercept `source`'s Tab
+   * after the panel is gone. A no-op with no connected `source`.
+   */
+  #armSourceReentry(): void {
+    this.#sourceController?.abort();
+    this.#sourceController = undefined;
+    if (!this.#source?.isConnected) return;
+    this.#sourceController = new AbortController();
+    this.#source.addEventListener('keydown', this.#onSourceKeydown, { signal: this.#sourceController.signal });
+  }
+
+  /** Only plain `Tab` (not `Shift+Tab`, left native so it keeps leaving toward whatever precedes `source`) re-enters. */
+  #onSourceKeydown = (ev: KeyboardEvent): void => {
+    if (ev.key !== 'Tab' || ev.shiftKey) return;
+    const first = this.#focusableElements()[0];
+    if (!first) return;
+    ev.preventDefault();
+    first.focus();
+  };
 
   /** Focusable descendants in document order, which matches tab order (§5: header, then body, then footer). */
   #focusableElements(): HTMLElement[] {
