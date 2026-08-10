@@ -20,6 +20,8 @@ widget-nested-list:not(:defined) {
 .widget-nested-list__leaf {
   display: flex;
   align-items: center;
+  padding: var(--widget-nested-list-row-padding, 0.3em 0.4em);
+  border-radius: var(--widget-nested-list-row-radius, 4px);
 }
 
 .widget-nested-list__header {
@@ -31,10 +33,18 @@ widget-nested-list:not(:defined) {
   display: flex;
   align-items: center;
   gap: 0.5em;
+  padding: var(--widget-nested-list-row-padding, 0.3em 0.4em);
+  border-radius: var(--widget-nested-list-row-radius, 4px);
   background: none;
   border: none;
   font: inherit;
+  color: inherit;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--widget-nested-list-hover-background, color-mix(in srgb, currentColor 8%, transparent));
+  }
 
   &:focus-visible {
     outline: 2px solid var(--ui-focus-ring, #5b8af5);

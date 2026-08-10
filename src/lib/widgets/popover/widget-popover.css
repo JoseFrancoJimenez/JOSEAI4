@@ -36,6 +36,15 @@ widget-popover:not(:defined) {
   max-height: var(--widget-popover-max-height, none);
 }
 
+/*
+ * A floating panel reads as "above" the page, so it gets a stronger elevation than an inline
+ * `ui-card` — set as a card knob override, scoped to this widget's own card instance, never a
+ * change to `ui-card`'s own default.
+ */
+.widget-popover__card {
+  --ui-card-shadow: var(--widget-popover-shadow, 0 8px 24px color-mix(in srgb, currentColor 24%, transparent));
+}
+
 /* Pushes the close button to the trailing edge of the card's header — a node this widget built, styled by its own class. */
 .widget-popover__close {
   margin-inline-start: auto;

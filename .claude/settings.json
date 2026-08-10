@@ -33,7 +33,8 @@
       "Bash(node -e ' *)",
       "Bash(git -C \"c:/dev/JOSEAI4\" log --oneline -20)",
       "Bash(echo \"done, exit code: $?\")",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(xargs cat)"
     ]
   },
   "model": "opusplan"

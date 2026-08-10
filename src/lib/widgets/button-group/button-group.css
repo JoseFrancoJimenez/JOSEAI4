@@ -10,34 +10,54 @@ widget-button-group:not(:defined) {
   /* Flat, shared-border block: every child is square by default; only the outer edges round. */
   > * {
     --ui-button-radius: 0;
+    position: relative;
+  }
+
+  /* Adjacent 1px borders would stack into a 2px seam; pull each button back over its neighbour's
+     border so the seam reads as a single hairline, the standard segmented-control technique. */
+  > :not(:first-child) {
+    margin-inline-start: calc(-1 * var(--widget-button-group-border-width, 1px));
+  }
+
+  /* A hovered, active, or focused button's own border must stay whole, not be overlapped by a
+     neighbour drawn later in source order. */
+  > :hover,
+  > :active,
+  > :focus-within {
+    z-index: 1;
   }
 
   > :first-child {
-    --ui-button-radius: var(--widget-button-group-radius, 4px) 0 0 var(--widget-button-group-radius, 4px);
+    --ui-button-radius: var(--widget-button-group-radius, 6px) 0 0 var(--widget-button-group-radius, 6px);
   }
 
   > :last-child {
-    --ui-button-radius: 0 var(--widget-button-group-radius, 4px) var(--widget-button-group-radius, 4px) 0;
+    --ui-button-radius: 0 var(--widget-button-group-radius, 6px) var(--widget-button-group-radius, 6px) 0;
   }
 
   /* A lone child is both first and last — round every corner instead of splitting the radius in two. */
   > :only-child {
-    --ui-button-radius: var(--widget-button-group-radius, 4px);
+    --ui-button-radius: var(--widget-button-group-radius, 6px);
   }
 
   &[orientation='vertical'] {
     flex-direction: column;
 
+    > :not(:first-child) {
+      margin-inline-start: 0;
+      margin-block-start: calc(-1 * var(--widget-button-group-border-width, 1px));
+    }
+
     > :first-child {
-      --ui-button-radius: var(--widget-button-group-radius, 4px) var(--widget-button-group-radius, 4px) 0 0;
+      --ui-button-radius: var(--widget-button-group-radius, 6px) var(--widget-button-group-radius, 6px) 0 0;
     }
 
     > :last-child {
-      --ui-button-radius: 0 0 var(--widget-button-group-radius, 4px) var(--widget-button-group-radius, 4px);
+      --ui-button-radius: 0 0 var(--widget-button-group-radius, 6px) var(--widget-button-group-radius, 6px);
     }
 
     > :only-child {
-      --ui-button-radius: var(--widget-button-group-radius, 4px);
+      --ui-button-radius: var(--widget-button-group-radius, 6px);
     }
   }
 }

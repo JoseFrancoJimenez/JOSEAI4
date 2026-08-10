@@ -7,10 +7,11 @@ ui-card:not(:defined) {
   flex-direction: column;
   overflow: hidden;
   color: inherit;
-  background: var(--ui-card-background, transparent);
+  background: var(--ui-card-background, canvas);
   border: var(--ui-card-border-width, 1px) solid
     var(--ui-card-border-color, color-mix(in srgb, currentColor 20%, transparent));
-  border-radius: var(--ui-card-radius, 4px);
+  border-radius: var(--ui-card-radius, 8px);
+  box-shadow: var(--ui-card-shadow, 0 1px 3px color-mix(in srgb, currentColor 12%, transparent));
 
   :where([data-outlet]) {
     padding: var(--ui-card-padding, 12px);
