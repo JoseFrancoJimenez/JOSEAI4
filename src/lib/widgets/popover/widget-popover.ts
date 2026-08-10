@@ -13,6 +13,8 @@ import { UiButtonElement } from '../../elements/ui-button/ui-button.ts';
 
 type WidgetPopoverRegion = (typeof regionNames)[number];
 
+const UPGRADE_PROPS = ['clampTo'] as const;
+
 /**
  * The group-sibling decision (Task 5), extracted so it is asserted without touching the DOM
  * at all: every candidate except `self` that is currently open. Selection of the candidates
@@ -23,6 +25,31 @@ function siblingsToClose<T extends { open: boolean }>(candidates: readonly T[], 
 }
 
 /**
+ * The clamp arithmetic (Task 7), extracted the same way `siblingsToClose` is: `#clampToBounds`
+ * itself can't be exercised in a unit test — jsdom performs no layout, so `getBoundingClientRect`
+ * always reports zeros — but this is plain min/max math over whatever rects it's handed, so it is
+ * asserted directly, DOM-free. Pulls a `size`-sized box at (`x`, `y`) back inside `bounds`,
+ * leaving `gap` of breathing room from whichever edge it would otherwise cross; falls back to
+ * flush against the near edge when `size` alone is wider or taller than `bounds`.
+ */
+function clampToBounds(
+  x: number,
+  y: number,
+  size: { width: number; height: number },
+  bounds: { left: number; top: number; right: number; bottom: number },
+  gap: number,
+): { x: number; y: number } {
+  const minX = bounds.left + gap;
+  const minY = bounds.top + gap;
+  const maxX = Math.max(minX, bounds.right - size.width - gap);
+  const maxY = Math.max(minY, bounds.bottom - size.height - gap);
+  return {
+    x: Math.min(Math.max(x, minX), maxX),
+    y: Math.min(Math.max(y, minY), maxY),
+  };
+}
+
+/**
  * `<widget-popover>` — a non-modal, top-layer floating panel built on the platform Popover API.
  * Composes `ui-card` for its frame and `ui-button` for its close control. No `setup()`: fully
  * configurable by attributes and content regions, so there is no readiness gate to build
@@ -30,7 +57,8 @@ function siblingsToClose<T extends { open: boolean }>(candidates: readonly T[], 
  *
  * This is through Task 7: skeleton, card composition, region forwarding, the close button
  * wired to `hide()`, open/close, focus restoration, Escape, group auto-close, positioning, and
- * a viewport clamp on top of `positionAt` so it never renders off the right or bottom edge.
+ * a boundary clamp on top of `positionAt` so it never renders outside `clampTo` (viewport by
+ * default) — never off any edge, not just the right/bottom.
  */
 class WidgetPopoverElement extends HTMLElement {
   #rendered = false;
@@ -45,17 +73,33 @@ class WidgetPopoverElement extends HTMLElement {
   #controller: AbortController | undefined;
   #source: HTMLElement | undefined;
   #restoreFocus = false;
+  #clampTo: Element | null = null;
 
   /** `this.matches(':popover-open')` — the platform is the source of truth, never mirrored (§2). */
   get open(): boolean {
     return this.matches(':popover-open');
   }
 
-  // No property upgrade: `open` is a read-only getter backed by `:popover-open`, and
-  // `group`/`close-label` are plain, unobserved attributes read at the moment they matter.
+  /**
+   * Set once to constrain every future `show()`/`positionAt()` to this element's bounds instead
+   * of the viewport — e.g. a map div a click-positioned feature popup should never spill out of.
+   * Rich data (an `Element` reference), so a property, not an attribute (skill §6). `null` (the
+   * default) restores the viewport-only clamp.
+   */
+  get clampTo(): Element | null {
+    return this.#clampTo;
+  }
+
+  set clampTo(value: Element | null) {
+    this.#clampTo = value;
+  }
+
+  // `open` has no upgrade: it is a read-only getter backed by `:popover-open`. `group`/
+  // `close-label` are plain, unobserved attributes read at the moment they matter.
   connectedCallback(): void {
     this.classList.add(cls.host);
     this.setAttribute('popover', 'manual');
+    for (const prop of UPGRADE_PROPS) this.#upgradeProperty(prop);
     if (!this.#controller) {
       this.#controller = new AbortController();
       const { signal } = this.#controller;
@@ -83,7 +127,7 @@ class WidgetPopoverElement extends HTMLElement {
   show(source?: HTMLElement): void {
     this.#source = source;
     this.showPopover();
-    this.#clampToViewport();
+    this.#clampToBounds();
   }
 
   hide(): void {
@@ -96,30 +140,45 @@ class WidgetPopoverElement extends HTMLElement {
     else this.show(source);
   }
 
-  /** A coordinate is not state (§4): writes custom properties, nothing else — the placement rule stays in CSS. */
+  /**
+   * A coordinate is not state (§4): writes custom properties — the placement rule stays in CSS.
+   * Also re-clamps immediately when already open, so a caller that measures its own size *after*
+   * `show()` (positioning beside an anchor whose width it doesn't know upfront) still gets pulled
+   * back inside bounds on this call, not just on the next `show()`.
+   */
   positionAt(x: number, y: number): void {
     this.style.setProperty('--widget-popover-x', `${x}px`);
     this.style.setProperty('--widget-popover-y', `${y}px`);
+    if (this.open) this.#clampToBounds();
   }
 
   /**
-   * Boundary clamp, not collision detection (§10): only pulls a `positionAt`'d popover back when
-   * it would render off the right or bottom edge — never flips sides, never touches a popover
-   * placed by app CSS (`.tools` etc.), and does nothing at all when `positionAt` was never called
-   * (the presence of the custom property is the signal, matching `positionAt`'s own "no extra
-   * state" design). Measuring only works post-`showPopover()`, once the box has real layout —
-   * jsdom performs no layout, so this is unverifiable in a unit test and is checked in the
-   * sandbox instead, the same way `--widget-popover-max-height` capping is (§6).
+   * Boundary clamp, not collision detection (§10): pulls a `positionAt`'d popover back inside
+   * `clampTo`'s bounds (or the viewport, when `clampTo` is unset) — never flips sides, never
+   * touches a popover placed by app CSS (`.tools` etc.), and does nothing at all when `positionAt`
+   * was never called (the presence of the custom property is the signal, matching `positionAt`'s
+   * own "no extra state" design). Measuring only works post-`showPopover()`, once the box has real
+   * layout — this method itself is unverifiable in a unit test through the widget (jsdom performs
+   * no layout), so the arithmetic lives in `clampToBounds` above, tested DOM-free; the whole thing
+   * is checked in the sandbox the same way `--widget-popover-max-height` capping is (§6).
    */
-  #clampToViewport(): void {
+  #clampToBounds(): void {
     if (this.style.getPropertyValue('--widget-popover-x') === '') return;
 
-    const gap = 8;
     const rect = this.getBoundingClientRect();
-    const maxLeft = Math.max(gap, window.innerWidth - rect.width - gap);
-    const maxTop = Math.max(gap, window.innerHeight - rect.height - gap);
-    if (rect.left > maxLeft) this.style.setProperty('--widget-popover-x', `${maxLeft}px`);
-    if (rect.top > maxTop) this.style.setProperty('--widget-popover-y', `${maxTop}px`);
+    const bounds = this.#clampTo?.getBoundingClientRect() ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+    const { x, y } = clampToBounds(rect.left, rect.top, rect, bounds, 8);
+    if (x !== rect.left) this.style.setProperty('--widget-popover-x', `${x}px`);
+    if (y !== rect.top) this.style.setProperty('--widget-popover-y', `${y}px`);
+  }
+
+  /** Moves a value written before class registration off the instance so the prototype accessor takes over. */
+  #upgradeProperty(prop: (typeof UPGRADE_PROPS)[number]): void {
+    if (!Object.hasOwn(this, prop)) return;
+    const bag = this as unknown as Record<string, unknown>;
+    const value = bag[prop];
+    delete bag[prop];
+    bag[prop] = value;
   }
 
   /**
@@ -259,5 +318,5 @@ declare global {
   }
 }
 
-export { WidgetPopoverElement, siblingsToClose };
+export { WidgetPopoverElement, siblingsToClose, clampToBounds };
 export type { WidgetPopoverRegion };

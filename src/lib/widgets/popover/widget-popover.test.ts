@@ -32,7 +32,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import './widget-popover.ts';
-import { WidgetPopoverElement, siblingsToClose } from './widget-popover.ts';
+import { WidgetPopoverElement, siblingsToClose, clampToBounds } from './widget-popover.ts';
 import type { WidgetPopoverRegion } from './widget-popover.ts';
 
 // The stub is loaded globally via vitest.config.ts's setupFiles for the "lib" project.
@@ -444,6 +444,33 @@ describe('siblingsToClose (Task 5, DOM-free)', () => {
   });
 });
 
+describe('clampToBounds (Task 7, DOM-free)', () => {
+  const bounds = { left: 0, top: 0, right: 200, bottom: 100 };
+  const size = { width: 40, height: 20 };
+
+  it('leaves a box that already fits untouched', () => {
+    expect(clampToBounds(50, 30, size, bounds, 0)).toEqual({ x: 50, y: 30 });
+  });
+
+  it('pulls a box back inside the right/bottom edge', () => {
+    expect(clampToBounds(190, 95, size, bounds, 0)).toEqual({ x: 160, y: 80 });
+  });
+
+  it('pulls a box back inside the left/top edge', () => {
+    expect(clampToBounds(-30, -10, size, bounds, 0)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('resolves to the bounds origin when the box is wider than the bounds', () => {
+    const wide = { width: 300, height: 20 };
+    expect(clampToBounds(50, 30, wide, bounds, 0).x).toBe(0);
+  });
+
+  it('leaves gap px of breathing room from every edge when there is room for it', () => {
+    expect(clampToBounds(190, 95, size, bounds, 8)).toEqual({ x: 152, y: 72 });
+    expect(clampToBounds(-30, -10, size, bounds, 8)).toEqual({ x: 8, y: 8 });
+  });
+});
+
 describe('widget-popover groups (Task 5)', () => {
   it('opening a popover closes an open sibling in the same group', () => {
     const [a, b] = mountWidgets('<widget-popover group="g"></widget-popover><widget-popover group="g"></widget-popover>');
@@ -540,5 +567,30 @@ describe('widget-popover positionAt (Task 6)', () => {
 
     expect(el.style.getPropertyValue('--widget-popover-x')).toBe('30px');
     expect(el.style.getPropertyValue('--widget-popover-y')).toBe('40px');
+  });
+});
+
+describe('widget-popover clampTo', () => {
+  it('defaults to null', () => {
+    const el = mountWidget();
+    expect(el.clampTo).toBeNull();
+  });
+
+  it('round-trips a set element', () => {
+    const el = mountWidget();
+    const container = document.createElement('div');
+
+    el.clampTo = container;
+
+    expect(el.clampTo).toBe(container);
+  });
+
+  it('set back to null restores the viewport-only default', () => {
+    const el = mountWidget();
+    el.clampTo = document.createElement('div');
+
+    el.clampTo = null;
+
+    expect(el.clampTo).toBeNull();
   });
 });

@@ -32,6 +32,13 @@ export default defineConfig({
           environment: "jsdom",
         },
       },
+      {
+        test: {
+          name: "proto-all",
+          root: "./src/apps/proto-all",
+          environment: "jsdom",
+        },
+      },
     ],
   },
 });
