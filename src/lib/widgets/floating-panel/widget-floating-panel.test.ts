@@ -239,7 +239,7 @@ describe('widget-floating-panel open state (§4)', () => {
 // specific to this widget or its former stub. Stays a manual/sandbox check.
 
 describe('widget-floating-panel focus restoration (Task 4)', () => {
-  it('show() does not move focus into the popover', () => {
+  it('show() moves focus to the panel itself', () => {
     const el = mountWidget();
     const outside = document.createElement('button');
     document.body.append(outside);
@@ -247,7 +247,7 @@ describe('widget-floating-panel focus restoration (Task 4)', () => {
 
     el.show();
 
-    expect(document.activeElement).toBe(outside);
+    expect(document.activeElement).toBe(el);
   });
 
   it('with focus inside, hide() returns focus to source', () => {
@@ -462,7 +462,7 @@ describe('widget-floating-panel groups — attribute changes and focus (Task 5)'
     expect(a.open).toBe(false);
   });
 
-  it('closing a sibling this way does not steal focus from the button that triggered the open', () => {
+  it('closing a sibling this way does not steal focus back to its own source', () => {
     const [a, b] = mountWidgets('<widget-floating-panel group="g"></widget-floating-panel><widget-floating-panel group="g"></widget-floating-panel>');
     const sourceA = document.createElement('button');
     document.body.append(sourceA);
@@ -475,7 +475,8 @@ describe('widget-floating-panel groups — attribute changes and focus (Task 5)'
     b.show(triggerB);
 
     expect(a.open).toBe(false);
-    expect(document.activeElement).toBe(triggerB);
+    expect(document.activeElement).not.toBe(sourceA);
+    expect(document.activeElement).toBe(b);
   });
 });
 

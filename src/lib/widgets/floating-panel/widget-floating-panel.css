@@ -6,7 +6,7 @@ widget-floating-panel:not(:defined) {
 
 /*
  * `position: absolute` resolves coordinates against the nearest positioned ancestor rather than
- * the viewport (`docs/tasks/popover/widget-floating-panel-plan.md` §0, §6) — containment and
+ * the viewport (`docs/tasks/popover/widget-floating-panel-plan.md` §7) — containment and
  * clipping are the consumer's decision, made with `position` / `overflow` on that ancestor, not
  * ours to make. `z-index` gets its own knob: the top layer gave stacking immunity for free,
  * inside a container the panel competes with whatever else the host app stacks.
@@ -22,11 +22,11 @@ widget-floating-panel:not(:defined) {
 }
 
 /*
- * `[open]` is the single source of truth (§4) — hidden with `display: none`, never `visibility`
+ * `[open]` is the single source of truth (§2) — hidden with `display: none`, never `visibility`
  * or `opacity`, so closed content leaves the accessibility tree and stops being focusable
  * (`docs/accessibility.md` §7). A class-plus-`:not([open])` selector, not a bare attribute
  * selector, so an app rule like `widget-floating-panel.tools { inset: 1rem 1rem auto auto; }`
- * (static placement, §6) still outranks the base rule above on specificity and wins without
+ * (static placement, §7) still outranks the base rule above on specificity and wins without
  * `!important`.
  */
 .widget-floating-panel:not([open]) {

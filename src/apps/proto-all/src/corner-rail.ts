@@ -9,18 +9,18 @@ type Side = 'left' | 'right';
  * and the precise position is applied in the same synchronous task — the browser has nothing to
  * paint yet, so there is no visible jump from the default corner.
  *
- * NOTE: `positionAt` coordinates are now relative to the panel's offset parent, not the viewport
- * (`docs/tasks/popover/widget-floating-panel-plan.md` §6) — these panels are still placed outside
- * `#map` in `index.html`, so the raw viewport rects used below no longer land where they visually
- * should. Left as-is pending a decision on repositioning them inside `#map`.
+ * `positionAt` coordinates are relative to the panel's offset parent, not the viewport (§6), so
+ * the viewport rects below are translated into that space by subtracting the offset parent's own
+ * rect — rather than hardcoding `#map`, so this keeps working if the panel is ever reparented.
  */
 function openBeside(panel: WidgetFloatingPanelElement, anchor: ButtonGroupElement, side: Side): void {
   panel.show(anchor.activeButton ?? undefined);
   const gap = parseFloat(getComputedStyle(anchor).fontSize) * 0.1;
   const anchorRect = anchor.getBoundingClientRect();
   const panelRect = panel.getBoundingClientRect();
+  const originRect = (panel.offsetParent ?? document.body).getBoundingClientRect();
   const x = side === 'right' ? anchorRect.right + gap : anchorRect.left - panelRect.width - gap;
-  panel.positionAt(x, anchorRect.top);
+  panel.positionAt(x - originRect.left, anchorRect.top - originRect.top);
 }
 
 /**
@@ -29,7 +29,7 @@ function openBeside(panel: WidgetFloatingPanelElement, anchor: ButtonGroupElemen
  * opens right, the right rail opens left). Deselecting (value `null`, from clicking the active
  * button again) hides whichever panel is open — at most one can be, since every panel in the rail
  * shares the same `group` and `widget-floating-panel` already closes group siblings on open
- * (`docs/tasks/popover/widget-floating-panel-plan.md` §5).
+ * (`docs/tasks/popover/widget-floating-panel-plan.md` §8).
  */
 function wireCornerRail(railId: string, side: Side): void {
   const rail = document.getElementById(railId) as ButtonGroupElement;

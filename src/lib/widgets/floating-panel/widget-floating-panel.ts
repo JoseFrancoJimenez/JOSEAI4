@@ -5,7 +5,7 @@
 // own focus models (docs/accessibility.md §3.2). role="region" was considered and rejected: it
 // would demand an accessible name the consumer may not have (docs/accessibility.md §4), and a
 // landmark for a transient tool panel is noise. No ARIA is better than wrong ARIA
-// (docs/accessibility.md §1; docs/tasks/popover/widget-floating-panel-plan.md §8).
+// (docs/accessibility.md §1; docs/tasks/popover/widget-floating-panel-plan.md §9).
 
 import './widget-floating-panel.css';
 import { cls, regionNames } from './widget-floating-panel-dom.ts';
@@ -30,7 +30,7 @@ function siblingsToClose<T extends { open: boolean }>(candidates: readonly T[], 
 }
 
 /**
- * Walks `el`'s ancestors looking for a `position` other than `static` (§6). Not `el.offsetParent`:
+ * Walks `el`'s ancestors looking for a `position` other than `static` (§7). Not `el.offsetParent`:
  * that getter answers a layout question ("what box resolves my offsets"), and jsdom — which
  * performs no layout (`docs/testing.md` §3) — hard-codes it to `null` unconditionally, which
  * would make this guard fire on every open in tests and the "has a positioned ancestor" case
@@ -47,14 +47,14 @@ function hasPositionedAncestor(el: Element): boolean {
 
 /**
  * `<widget-floating-panel>` — a non-modal floating panel, positioned with container-relative
- * `position: absolute` rather than the platform Popover API
- * (`docs/tasks/popover/widget-floating-panel-plan.md` §0, §6). Composes `ui-card` for its frame
- * and `ui-button` for its close control. No `setup()`: fully configurable by attributes and
- * content regions, so there is no readiness gate to build.
+ * `position: absolute` rather than the platform Popover API (`docs/rationale.md` "Popover API
+ * replaced by container-relative positioning"; `docs/tasks/popover/widget-floating-panel-plan.md`
+ * §7). Composes `ui-card` for its frame and `ui-button` for its close control. No `setup()`: fully
+ * configurable by attributes and content regions, so there is no readiness gate to build.
  *
- * `open` is a reflecting attribute and the single source of truth (§4); `show()` / `hide()` /
+ * `open` is a reflecting attribute and the single source of truth (§2); `show()` / `hide()` /
  * `toggle()` are thin wrappers around it. Containment and clipping are the consumer's job via
- * CSS — `position` and `overflow` on an ancestor — the widget itself does no clamping (§6, §12).
+ * CSS — `position` and `overflow` on an ancestor — the widget itself does no clamping (§7, §14).
  */
 class WidgetFloatingPanelElement extends HTMLElement {
   static observedAttributes = ['open'];
@@ -72,7 +72,7 @@ class WidgetFloatingPanelElement extends HTMLElement {
   #source: HTMLElement | undefined;
   #positionAncestorChecked = false;
 
-  /** `open` is a reflecting, observed attribute and the single source of truth (§4). */
+  /** `open` is a reflecting, observed attribute and the single source of truth (§2). */
   get open(): boolean {
     return this.hasAttribute('open');
   }
@@ -83,6 +83,10 @@ class WidgetFloatingPanelElement extends HTMLElement {
 
   connectedCallback(): void {
     this.classList.add(cls.host);
+    // Programmatic focus target only — `-1` keeps it out of sequential Tab order, so this adds no
+    // extra Tab stop. Opening moves focus here (attributeChangedCallback below) so keyboard users
+    // land on the panel immediately and Tab into its content, close button included, from there.
+    this.setAttribute('tabindex', '-1');
     for (const prop of UPGRADE_PROPS) this.#upgradeProperty(prop);
     if (!this.#controller) {
       this.#controller = new AbortController();
@@ -108,7 +112,7 @@ class WidgetFloatingPanelElement extends HTMLElement {
   /**
    * Reacts to `open` changing, whether through the property, `setAttribute`, or initial markup.
    * `toggleAttribute` (the property setter) is already a no-op when the attribute already
-   * matches the target state, so a genuinely redundant call never reaches here (§4 "guard
+   * matches the target state, so a genuinely redundant call never reaches here (§2 "guard
    * re-entry"). Guarded on `#rendered` the same way `attributeChangedCallback` is everywhere
    * else in this repo — pre-render state is picked up by `#render()` itself.
    */
@@ -116,9 +120,10 @@ class WidgetFloatingPanelElement extends HTMLElement {
     if (!this.#rendered || !this.open) return;
     this.#warnIfNoPositionedAncestor();
     this.#closeGroupSiblings();
+    this.focus();
   }
 
-  /** Opening never moves focus (§7); `source` is captured only to know where to return it on close. */
+  /** Opening moves focus to the panel itself (`attributeChangedCallback`); `source` is captured only to know where to return it on close. */
   show(source?: HTMLElement): void {
     if (this.open) return;
     this.#source = source;
@@ -126,7 +131,7 @@ class WidgetFloatingPanelElement extends HTMLElement {
   }
 
   /**
-   * Focus restoration collapses into this one place (§7): capture whether the panel held focus
+   * Focus restoration collapses into this one place (§8): capture whether the panel held focus
    * *before* removing `open` takes the content out of the accessibility tree, then restore
    * synchronously in the same call. `#source` optional. With no source (or a disconnected one),
    * the old platform `hidePopover()` guaranteed focus moved out of the removed top-layer content
@@ -150,7 +155,7 @@ class WidgetFloatingPanelElement extends HTMLElement {
 
   /**
    * A coordinate is not state (§4): writes custom properties only — the placement rule stays in
-   * CSS. Coordinates are relative to the offset parent, not the viewport (§6, a contract
+   * CSS. Coordinates are relative to the offset parent, not the viewport (§7, a contract
    * change from the top-layer version) — containment is the consumer's job, not ours.
    */
   positionAt(x: number, y: number): void {
@@ -168,7 +173,7 @@ class WidgetFloatingPanelElement extends HTMLElement {
   }
 
   /**
-   * Dev-only, checked once per instance on its first open (§6): no positioned ancestor means
+   * Dev-only, checked once per instance on its first open (§7): no positioned ancestor means
    * `positionAt()` coordinates resolve against the page, not a container — the most likely
    * integration mistake, and otherwise silent. Stripped in production.
    */
@@ -195,7 +200,7 @@ class WidgetFloatingPanelElement extends HTMLElement {
     this.dispatchEvent(new CustomEvent('widget-floating-panel:toggle', { detail: { open: this.open }, bubbles: true }));
   }
 
-  /** Listening on the host, not `document`, is the whole implementation of "only when focus is inside" (§7). */
+  /** Listening on the host, not `document`, is the whole implementation of "only when focus is inside" (§8). */
   #onKeydown = (ev: KeyboardEvent): void => {
     if (ev.key !== 'Escape') return;
     ev.preventDefault();
@@ -297,7 +302,7 @@ class WidgetFloatingPanelElement extends HTMLElement {
   /**
    * Persistent across the widget's lifetime: a live region must exist before its content
    * changes, so this wrapper is handed to the card once and filled in place, never replaced
-   * (`docs/tasks/popover/widget-floating-panel-plan.md` §6 — the fill itself lands in Task 3).
+   * (`docs/tasks/popover/widget-floating-panel-plan.md` §6).
    */
   #buildLiveWrapper(): HTMLDivElement {
     const wrapper = document.createElement('div');
