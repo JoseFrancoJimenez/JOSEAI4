@@ -8,7 +8,6 @@ export default defineConfig({
           name: "lib",
           root: "./src/lib",
           environment: "jsdom",
-          setupFiles: ["./test-setup/popover-api-stub.ts"],
         },
       },
       {

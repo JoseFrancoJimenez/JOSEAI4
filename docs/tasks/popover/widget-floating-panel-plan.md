@@ -227,7 +227,6 @@ This is where the API gets judged. If something feels awkward here, fix the desi
 ## 9. Feedback to the skill
 
 - **First widget with no `setup()`.** Skill §5 allows it in one sentence but is written as though the gate is the norm — `#renderIfReady`, `#assertReady`, "getters return safe empties" all assume it. Worth a paragraph on the shape of a widget without a gate: what replaces `#assertReady`, and whether "commands require connection" needs a stated convention.
-- **The `:popover-open` display trap** (Task 6) is a platform gotcha the skill's "set an explicit `display`" rule walks straight into. One sentence in §10 would save the next person an hour.
 - **`ui-button` forwards no `popovertarget`.** Not needed under `manual`, but it is the native fix for the light-dismiss race and the blocker if `auto` is ever revisited. Record it in `docs/ui-button-plan.md` §3 as a known non-hook rather than rediscovering it.
 - **`ui-card` gets its first real consumer here.** Anything awkward in `setContent` — particularly the fragment-rebuild on every header write — goes back to `docs/ui-card-plan.md` §9, not around it.
 

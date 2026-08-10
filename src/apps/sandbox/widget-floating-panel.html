@@ -3,9 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>widget-popover demo</title>
+    <title>widget-floating-panel demo</title>
     <style>
+      /* position: relative so the statically-placed .tools panels below have a positioned ancestor
+         (§6) — otherwise every one of them would trip the dev-only "no positioned ancestor" guard
+         on first open, even though inset placement against the page is exactly what they want. */
       body {
+        position: relative;
         font-family: system-ui, sans-serif;
         padding: 24px;
       }
@@ -36,30 +40,70 @@
         color: #556;
         padding: 0 4px;
       }
+      /* App-level chrome stand-in (§6, §10): fixed, high z-index. The feature popup near the
+         top-right corner of #map must render below this, never above it. */
+      .app-chrome-badge {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 1000;
+        background: #123;
+        color: #fff;
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        pointer-events: none;
+      }
+
       #map {
         position: relative;
         width: 100%;
+        max-width: 640px;
+        min-width: 220px;
         height: 320px;
+        min-height: 160px;
+        resize: both;
+        overflow: hidden;
         background: repeating-linear-gradient(45deg, #dde, #dde 10px, #eef 10px, #eef 20px);
         border: 1px solid #99a;
         cursor: crosshair;
       }
+      /* Manual test of §10's "overflow: hidden clips, visible does not" — toggled by #clip-toggle. */
+      #map.clip-off {
+        overflow: visible;
+      }
       #map::before {
-        content: 'Click anywhere to open the feature popup at that point.';
+        content: 'Click to open the feature popup at that point. Drag the bottom-right corner to resize the container.';
         position: absolute;
         top: 8px;
         left: 8px;
+        max-width: 60%;
         font-size: 12px;
         color: #445;
       }
+      /* Map-engine control stand-in (§6): low z-index. The feature popup must stack above this. */
+      .map-control {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        z-index: 1;
+        background: #234;
+        color: #fff;
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        pointer-events: none;
+      }
 
       /* Static placement for the tool/info panels — no positionAt involved (§4). */
-      widget-popover.tools {
+      widget-floating-panel.tools {
         inset: 1rem 1rem auto auto;
       }
     </style>
   </head>
   <body>
+    <div class="app-chrome-badge">App chrome (z-index 1000) — the feature popup must stay below this</div>
+
     <section>
       <h2>Trigger row — wired exactly as an app would: click → toggle(button)</h2>
       <div id="row">
@@ -83,56 +127,59 @@
     </section>
 
     <section>
-      <h2>Feature popup — positioned by clicking the map stand-in</h2>
-      <div id="map"></div>
+      <h2>Feature popup — positioned by clicking the map stand-in (§6, §10)</h2>
+      <label><input type="checkbox" id="clip-toggle" checked /> Clip panel to container (<code>overflow: hidden</code>)</label>
+      <div id="map">
+        <div class="map-control">Zoom stand-in (z-index 1)</div>
+        <!-- Child of #map on purpose: positionAt coordinates are relative to the offset parent (§6),
+             so the panel must live inside the positioned container it should stay clipped to. -->
+        <widget-floating-panel id="popover-feature">
+          <span data-region="header">Feature</span>
+          <span data-region="default"></span>
+        </widget-floating-panel>
+      </div>
     </section>
 
     <!-- Two in "tools" — opening one closes the other. Statically placed via the .tools class. -->
-    <widget-popover id="popover-tools-a" class="tools" group="tools">
+    <widget-floating-panel id="popover-tools-a" class="tools" group="tools">
       <span data-region="header">Tool A</span>
       Tool A's panel content.
-    </widget-popover>
+    </widget-floating-panel>
 
-    <widget-popover id="popover-tools-b" class="tools" group="tools">
+    <widget-floating-panel id="popover-tools-b" class="tools" group="tools">
       <!-- Header holding a real widget, not just text (§7). -->
       <ui-button data-region="header" icon="fa-solid fa-arrows-rotate" aria-label="Refresh"></ui-button>
       Tool B's panel — its header carries a widget, not plain text.
-    </widget-popover>
+    </widget-floating-panel>
 
     <!-- A third popover, its own group: opening it must not disturb the "tools" pair. -->
-    <widget-popover id="popover-info" class="tools" group="info">
+    <widget-floating-panel id="popover-info" class="tools" group="info">
       <span data-region="header">Info</span>
       A different group — opening this leaves the "tools" pair alone.
-    </widget-popover>
+    </widget-floating-panel>
 
     <!-- No group attribute: never auto-closes and is never auto-closed by anything. -->
-    <widget-popover id="popover-ungrouped" class="tools">
+    <widget-floating-panel id="popover-ungrouped" class="tools">
       <span data-region="header">Ungrouped</span>
       No group — opening this closes nothing, and nothing closes it.
-    </widget-popover>
+    </widget-floating-panel>
 
     <!-- No header region content at all: the header strip still renders, holding only the close button (§5). -->
-    <widget-popover id="popover-headerless" class="tools">
+    <widget-floating-panel id="popover-headerless" class="tools">
       This popover supplied no header content — the strip above still holds the close button.
-    </widget-popover>
+    </widget-floating-panel>
 
     <!-- Body updated on a timer once open, to watch the live region announce (§6: show() first, then setContent). -->
-    <widget-popover id="popover-timer" class="tools">
+    <widget-floating-panel id="popover-timer" class="tools">
       <span data-region="header">Timer</span>
       <span data-region="default">Waiting…</span>
-    </widget-popover>
+    </widget-floating-panel>
 
     <!-- Deliberate data-region typo: "haeder" is never claimed, so the regions helper logs a dev error. -->
-    <widget-popover id="popover-typo" class="tools">
+    <widget-floating-panel id="popover-typo" class="tools">
       <span data-region="haeder">This will never appear as a header.</span>
-    </widget-popover>
+    </widget-floating-panel>
 
-    <!-- Feature popup: no static class, placed entirely via positionAt from map clicks. -->
-    <widget-popover id="popover-feature">
-      <span data-region="header">Feature</span>
-      <span data-region="default"></span>
-    </widget-popover>
-
-    <script type="module" src="/src/widget-popover.ts"></script>
+    <script type="module" src="/src/widget-floating-panel.ts"></script>
   </body>
 </html>

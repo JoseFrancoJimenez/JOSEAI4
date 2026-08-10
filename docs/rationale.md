@@ -189,6 +189,18 @@ The component is then genuinely self-contained: importing it gets its styles, wi
 
 Before the tag registers, the browser treats it as an unknown inline element and paints its raw contents. One rule per component removes the flash. Cheap, and invisible when it works.
 
+## Popover API replaced by container-relative positioning
+
+`widget-floating-panel` (formerly `widget-popover`) was built on the platform Popover API — `popover="manual"`, the top layer, `:popover-open` — because it is the platform's own non-modal overlay primitive: free focus semantics, free stacking above everything else, free `Escape` handling to fall back on.
+
+It was replaced because the top layer is inescapable, not just powerful. A popover promoted to the top layer resolves its containing block against the *initial* containing block — the viewport — no matter where it sits in the DOM. Reparenting the element into a container changes nothing; `inset: 1rem` on a top-layer host means 1rem from the window's edge, not the container's. The widget's defining requirement became living *inside* a container (a map, a sidebar) and staying within it across resize, and the top layer structurally cannot do that. A `show()`-time viewport clamp patched the symptom at the moment of opening but could not track a container that resized afterward.
+
+CSS anchor positioning was evaluated next: it re-tethers a top-layer element to a normal-flow anchor, stays live across resize, and by the time of this decision was supported across all major engines. Rejected anyway, because it only solves *placement*. The panel would still render in the top layer, outside the container's stacking and overflow context, so the container still could not clip it — and "clipping is the consumer's decision" (`docs/tasks/popover/pop-over-modification-plan1.md` §6) would have had no way to be honored.
+
+`position: absolute` inside a positioned ancestor won on being structural rather than corrective: `positionAt(x, y)` coordinates are relative to the offset parent by definition, the panel moves with a resizing container with zero JavaScript, and a consumer who wants clipping gets it for free from `overflow: hidden` — one who does not gets `visible`. The cost is that the panel loses the top layer's free stacking-order immunity: inside a container it now competes with whatever else the host app stacks (map-engine controls, app chrome), which is why the widget grew an explicit `--widget-floating-panel-z-index` knob instead of relying on paint order.
+
+**What would flip this back:** a consumer that must escape *every* container's stacking and clipping context at once — the top layer's actual advantage — and does not need the panel to live inside anything. No such consumer exists yet.
+
 ## No RTL handling
 
 Only English and French ship, both left-to-right. Logical properties were considered and dropped as ceremony for a case that will not arise. If a right-to-left language is ever added, this is a mechanical CSS pass plus mirrored arrow keys in composite widgets — worth knowing, not worth pre-paying.

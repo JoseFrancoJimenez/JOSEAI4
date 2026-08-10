@@ -1,4 +1,4 @@
-import type { ButtonGroupElement, WidgetPopoverElement } from '@mini/lib/widgets';
+import type { ButtonGroupElement, WidgetFloatingPanelElement } from '@mini/lib/widgets';
 
 function buildFeatureBody(tool: string, x: number, y: number): DocumentFragment {
   const wrapper = document.createDocumentFragment();
@@ -13,14 +13,17 @@ function buildFeatureBody(tool: string, x: number, y: number): DocumentFragment 
 
 /**
  * Wires the map-tool `widget-button-group` (Pan/Select/Measure) and the click-to-open feature
- * popup. `featurePopover.clampTo` is set once, here, so every future `show()`/`positionAt()` is
- * restricted to the map's own bounds — no per-open clamping left to do. A click that started
- * inside a corner rail (`.corner-tools`) is ignored: those buttons bubble their `click` up to
- * `map` too, and without this guard every rail click would also drop a feature popup under it.
+ * popup. A click that started inside a corner rail (`.corner-tools`) is ignored: those buttons
+ * bubble their `click` up to `map` too, and without this guard every rail click would also drop
+ * a feature popup under it.
+ *
+ * NOTE: `positionAt` coordinates are now relative to the panel's offset parent, not the viewport
+ * (`docs/tasks/popover/widget-floating-panel-plan.md` §6) — `featurePopover` is still placed
+ * outside `#map` in `index.html`, so passing raw `clientX`/`clientY` here no longer lands where
+ * it visually should. Left as-is pending a decision on repositioning it inside `#map` and
+ * converting these to container-relative coordinates.
  */
-function wireMapTools(map: HTMLElement, tools: ButtonGroupElement, featurePopover: WidgetPopoverElement): void {
-  featurePopover.clampTo = map;
-
+function wireMapTools(map: HTMLElement, tools: ButtonGroupElement, featurePopover: WidgetFloatingPanelElement): void {
   map.addEventListener('click', (ev) => {
     if ((ev.target as Element).closest('.corner-tools')) return;
 

@@ -1,4 +1,4 @@
-import type { ButtonGroupElement, NestedListElement, WidgetPopoverElement } from '@mini/lib/widgets';
+import type { ButtonGroupElement, NestedListElement, WidgetFloatingPanelElement } from '@mini/lib/widgets';
 import '@mini/lib/widgets';
 import '@mini/lib/elements';
 import '@fortawesome/fontawesome-free/css/all.min.css';
@@ -12,10 +12,10 @@ setupLayersPanel(layersList, buildLayerTree());
 
 const map = document.getElementById('map')!;
 const tools = document.getElementById('tools') as ButtonGroupElement;
-const featurePopover = document.getElementById('feature-popover') as WidgetPopoverElement;
+const featurePopover = document.getElementById('feature-popover') as WidgetFloatingPanelElement;
 wireMapTools(map, tools, featurePopover);
 
-wireCornerRail('left-tools', 'right', map);
-wireCornerRail('right-tools', 'left', map);
+wireCornerRail('left-tools', 'right');
+wireCornerRail('right-tools', 'left');
 
 console.log('proto-all booted');

@@ -34,7 +34,10 @@
       "Bash(git -C \"c:/dev/JOSEAI4\" log --oneline -20)",
       "Bash(echo \"done, exit code: $?\")",
       "Bash(npx eslint *)",
-      "Bash(xargs cat)"
+      "Bash(xargs cat)",
+      "Bash(git mv *)",
+      "Bash(grep -iE \"floating-panel|widgets[\\\\\\\\\\\\\\\\/]index|proto-all|sandbox\")",
+      "Bash(grep -iE \"floating-panel|proto-all|sandbox|widgets[\\\\\\\\/]index|vitest\\\\.config\")"
     ]
   },
   "model": "opusplan"
