@@ -29,7 +29,11 @@
       "Bash(echo \"lint exit:$?\")",
       "Bash(git status *)",
       "Bash(grep -A 15 \"regions.ts$\")",
-      "Bash(grep -B1 -A5 \"regions.ts$\\\\|regions.test\")"
+      "Bash(grep -B1 -A5 \"regions.ts$\\\\|regions.test\")",
+      "Bash(node -e ' *)",
+      "Bash(git -C \"c:/dev/JOSEAI4\" log --oneline -20)",
+      "Bash(echo \"done, exit code: $?\")",
+      "Bash(npx eslint *)"
     ]
   },
   "model": "opusplan"

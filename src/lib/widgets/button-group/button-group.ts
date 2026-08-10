@@ -1,3 +1,5 @@
+// AWESOME AI
+
 // APG pattern: none — role="group" of ordinary buttons in natural tab order (docs/accessibility.md §1, §4).
 
 import './button-group.css';
