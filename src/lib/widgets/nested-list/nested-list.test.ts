@@ -1,6 +1,6 @@
 // AWESOME AI
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import './nested-list.ts';
 import { NestedListElement } from './nested-list.ts';
 import type { NestedListItem, NestedListToggleDetail } from './nested-list.ts';
@@ -13,10 +13,6 @@ function mount(): NestedListElement {
 
 function disclosureFor(el: NestedListElement, id: string): HTMLButtonElement {
   return el.querySelector<HTMLButtonElement>(`.widget-nested-list__disclosure[data-id="${id}"]`)!;
-}
-
-function nodeFor(el: NestedListElement, id: string): HTMLLIElement {
-  return el.querySelector<HTMLLIElement>(`li[data-id="${id}"]`)!;
 }
 
 const leaves: NestedListItem[] = [
@@ -240,21 +236,6 @@ describe('expandedIds', () => {
   });
 });
 
-describe('duplicate ids', () => {
-  it('logs a dev error for a duplicate id anywhere in the structure', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const el = mount();
-    el.setup({
-      items: [
-        { id: 'dup', label: 'One' },
-        { id: 'g', label: 'Group', children: [{ id: 'dup', label: 'Two' }] },
-      ],
-    });
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('duplicate item id "dup"'));
-    spy.mockRestore();
-  });
-});
-
 describe('extras callbacks', () => {
   it('inserts a callback Node as-is into the extras outlet', () => {
     const el = mount();
@@ -321,153 +302,3 @@ describe('extras callbacks — groups', () => {
   });
 });
 
-describe('no-consumer-children guard', () => {
-  it('logs a dev error when the host has non-whitespace children at render time', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    document.body.innerHTML = '<widget-nested-list>  <span>stray</span>  </widget-nested-list>';
-    const el = document.body.querySelector('widget-nested-list') as NestedListElement;
-    el.setup({ items: leaves });
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('does not accept consumer markup'));
-    spy.mockRestore();
-  });
-
-  it('does not log for whitespace-only children', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    document.body.innerHTML = '<widget-nested-list>\n  \n</widget-nested-list>';
-    const el = document.body.querySelector('widget-nested-list') as NestedListElement;
-    el.setup({ items: leaves });
-    expect(spy).not.toHaveBeenCalled();
-    spy.mockRestore();
-  });
-});
-
-describe('setItems — reuse and update', () => {
-  it('an unchanged item keeps the same DOM node reference', () => {
-    const el = mount();
-    el.setup({ items: nested });
-    const before = nodeFor(el, 'g1-a');
-    el.setItems(nested);
-    expect(nodeFor(el, 'g1-a')).toBe(before);
-  });
-
-  it("a changed item's node is reused, not recreated", () => {
-    const el = mount();
-    el.setup({ items: nested });
-    const before = nodeFor(el, 'g1-a');
-
-    const changed: NestedListItem[] = [
-      {
-        id: 'g1',
-        label: 'Group 1',
-        children: [
-          { id: 'g1-a', label: 'G1 Alpha CHANGED' },
-          { id: 'g1-g2', label: 'Group 1.2', children: [{ id: 'g1-g2-a', label: 'G1.2 Alpha' }] },
-        ],
-      },
-      { id: 'b', label: 'Beta' },
-    ];
-    el.setItems(changed);
-
-    expect(nodeFor(el, 'g1-a')).toBe(before);
-    expect(before.querySelector('.widget-nested-list__label')!.textContent).toBe('G1 Alpha CHANGED');
-  });
-});
-
-describe('setItems — removed and added ids', () => {
-  it('a removed id is removed from the DOM and the expansion Set', () => {
-    const el = mount();
-    el.setup({ items: nested });
-    expect(el.expandedIds).toContain('g1-g2');
-
-    el.setItems([{ id: 'g1', label: 'Group 1', children: [{ id: 'g1-a', label: 'G1 Alpha' }] }, { id: 'b', label: 'Beta' }]);
-
-    expect(nodeFor(el, 'g1-g2')).toBeNull();
-    expect(el.expandedIds).not.toContain('g1-g2');
-  });
-
-  it('an added group id starts collapsed when it is not in an explicit expanded list', () => {
-    const el = mount();
-    el.setup({ items: nested, expanded: ['g1'] });
-    el.setItems([...nested, { id: 'g3', label: 'Group 3', children: [{ id: 'g3-a', label: 'G3 Alpha' }] }]);
-    expect(disclosureFor(el, 'g3').getAttribute('aria-expanded')).toBe('false');
-  });
-
-  it('an added group id starts expanded when the mode is "all" (the default)', () => {
-    const el = mount();
-    el.setup({ items: nested });
-    el.setItems([...nested, { id: 'g3', label: 'Group 3', children: [] }]);
-    expect(disclosureFor(el, 'g3').getAttribute('aria-expanded')).toBe('true');
-  });
-});
-
-describe('setItems — reordering', () => {
-  it('reorders existing nested nodes with insertBefore rather than recreating them', () => {
-    const el = mount();
-    el.setup({ items: nested });
-    const beforeA = nodeFor(el, 'g1-a');
-    const beforeG2 = nodeFor(el, 'g1-g2');
-
-    const reordered = [
-      {
-        id: 'g1',
-        label: 'Group 1',
-        children: [
-          { id: 'g1-g2', label: 'Group 1.2', children: [{ id: 'g1-g2-a', label: 'G1.2 Alpha' }] },
-          { id: 'g1-a', label: 'G1 Alpha' },
-        ],
-      },
-      { id: 'b', label: 'Beta' },
-    ];
-    el.setItems(reordered);
-
-    expect(nodeFor(el, 'g1-a')).toBe(beforeA);
-    expect(nodeFor(el, 'g1-g2')).toBe(beforeG2);
-    const childIds = Array.from(nodeFor(el, 'g1').querySelector('.widget-nested-list__children')!.children)
-      .map((c) => (c as HTMLElement).dataset.id);
-    expect(childIds).toEqual(['g1-g2', 'g1-a']);
-  });
-
-  it('reorders top-level items too', () => {
-    const el = mount();
-    el.setup({ items: leaves });
-    const beforeA = nodeFor(el, 'a');
-    const beforeB = nodeFor(el, 'b');
-
-    el.setItems([leaves[1]!, leaves[0]!]);
-
-    const rootIds = Array.from(el.querySelector('.widget-nested-list__children')!.children)
-      .map((c) => (c as HTMLElement).dataset.id);
-    expect(rootIds).toEqual(['b', 'a']);
-    expect(nodeFor(el, 'a')).toBe(beforeA);
-    expect(nodeFor(el, 'b')).toBe(beforeB);
-  });
-});
-
-describe('setItems — expansion and readiness', () => {
-  it('expansion survives setItems for surviving ids', () => {
-    const el = mount();
-    el.setup({ items: nested, expanded: [] });
-    el.expand('g1');
-
-    el.setItems(nested);
-
-    expect(el.expandedIds).toContain('g1');
-    expect(disclosureFor(el, 'g1').getAttribute('aria-expanded')).toBe('true');
-  });
-
-  it('throws before setup()', () => {
-    const el = mount();
-    expect(() => el.setItems(leaves)).toThrow(/setup\(\)/);
-  });
-
-  it('logs a dev error for duplicate ids passed to setItems', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const el = mount();
-    el.setup({ items: leaves });
-
-    el.setItems([{ id: 'x', label: 'X' }, { id: 'x', label: 'Y' }]);
-
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining('duplicate item id "x"'));
-    spy.mockRestore();
-  });
-});

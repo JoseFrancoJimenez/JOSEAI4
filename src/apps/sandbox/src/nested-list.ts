@@ -89,19 +89,4 @@ list.addEventListener('widget-nested-list:toggle', (ev) => {
 document.getElementById('expand-utilities')!.addEventListener('click', () => list.expand('utilities'));
 document.getElementById('collapse-utilities')!.addEventListener('click', () => list.collapse('utilities'));
 
-// Demonstrates the surgical setItems diff: reorders Overlays' children (Utilities moves to the
-// top) and renames Zoning — the widget only diffs a leaf by id+label, so a label change is what
-// triggers its extras to be re-invoked (reading the flipped visibility below); every other node,
-// including everything nested under Utilities, keeps its exact DOM identity, just repositioned.
-document.getElementById('reorder')!.addEventListener('click', () => {
-  zoning.visible = !zoning.visible;
-  zoning.label = zoning.label === 'Zoning' ? 'Zoning ⚡' : 'Zoning';
-
-  const reordered: NestedListItem[] = [
-    initialItems[0]!,
-    group('overlays', 'Overlays', [utilities, layer(zoning.id, zoning.label), parcels]),
-  ];
-  list.setItems(reordered);
-});
-
 console.log('widget-nested-list demo booted');
